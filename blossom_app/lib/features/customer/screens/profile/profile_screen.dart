@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'dart:convert';
+import 'dart:typed_data';
 import 'package:blossom_app/features/customer/screens/profile/settings_screen.dart';
 import 'package:blossom_app/features/customer/screens/ai_skin_analysis/ai_skin_analysis_screen.dart'
     show AiSkinAnalysisScreen;
@@ -61,6 +63,16 @@ class ProfileScreen extends StatelessWidget {
           final elasticity = data['elasticity'] ?? 'Unknown';
           final acneProne = data['acneProne'] ?? 'Unknown';
 
+          final photoBase64 = data['photoBase64'] as String?;
+          Uint8List? photoBytes;
+          if (photoBase64 != null && photoBase64.isNotEmpty) {
+            try {
+              photoBytes = base64Decode(photoBase64);
+            } catch (_) {
+              photoBytes = null;
+            }
+          }
+
           return SingleChildScrollView(
             padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 10),
             child: Column(
@@ -84,10 +96,13 @@ class ProfileScreen extends StatelessWidget {
                                 offset: const Offset(0, 4),
                               ),
                             ],
-                            image: const DecorationImage(
-                              image: NetworkImage(
-                                'https://images.unsplash.com/photo-1494790108377-be9c29b29330?q=80&w=200&auto=format&fit=crop',
-                              ),
+                            image: DecorationImage(
+                              image: photoBytes != null
+                                  ? MemoryImage(photoBytes)
+                                  : const NetworkImage(
+                                          'https://images.unsplash.com/photo-1494790108377-be9c29b29330?q=80&w=200&auto=format&fit=crop',
+                                        )
+                                        as ImageProvider,
                               fit: BoxFit.cover,
                             ),
                           ),

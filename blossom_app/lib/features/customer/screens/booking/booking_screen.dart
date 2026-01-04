@@ -42,15 +42,20 @@ class _BookingScreenState extends State<BookingScreen> {
     }
     // Ensure service catalog exists for dropdown
     CatalogService.checkAndSeedData();
+    // Monitor connection status
+    try {
+      // Force connection attempt
+      FirebaseDatabase.instance.goOnline();
+    } catch (e) {
+      debugPrint('Error going online: $e');
+    }
+
     FirebaseDatabase.instance.ref('.info/connected').onValue.listen((event) {
       final val = event.snapshot.value;
       setState(() {
         _dbConnected = val == true;
       });
     });
-    try {
-      FirebaseDatabase.instance.goOnline();
-    } catch (_) {}
   }
 
   List<DateTime> _generateDatesForMonth(DateTime monthStart) {
@@ -491,15 +496,16 @@ class _BookingScreenState extends State<BookingScreen> {
               child: ElevatedButton(
                 onPressed: _selectedTimeSlot != null
                     ? () async {
-                        if (!_dbConnected) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('Booking will sync when online'),
-                              behavior: SnackBarBehavior.floating,
-                            ),
-                          );
-                        }
+                        // Show loading indicator
+                        showDialog(
+                          context: context,
+                          barrierDismissible: false,
+                          builder: (context) =>
+                              const Center(child: CircularProgressIndicator()),
+                        );
+
                         if (_selectedTimeSlot == '6:00') {
+                          Navigator.pop(context); // Dismiss loading
                           Navigator.push(
                             context,
                             MaterialPageRoute(
@@ -513,6 +519,7 @@ class _BookingScreenState extends State<BookingScreen> {
                             final User? user =
                                 FirebaseAuth.instance.currentUser;
                             if (user == null) {
+                              Navigator.pop(context); // Dismiss loading
                               ScaffoldMessenger.of(context).showSnackBar(
                                 const SnackBar(
                                   content: Text('Please login to book'),
@@ -539,7 +546,7 @@ class _BookingScreenState extends State<BookingScreen> {
                               'Booking: attempting write key=${ref.key} uid=${user.uid}',
                             );
 
-                            await ref.set({
+                            final bookingData = {
                               "userId": user.uid,
                               "userName": user.displayName ?? "Guest",
                               "date": formattedDate,
@@ -549,9 +556,22 @@ class _BookingScreenState extends State<BookingScreen> {
                                 "services": _selectedServices,
                               "status": "pending",
                               "timestamp": ServerValue.timestamp,
-                            });
+                            };
+
+                            // Perform write with mandatory await and timeout
+                            // This ensures we verify connection by actually trying to write
+                            await ref
+                                .set(bookingData)
+                                .timeout(
+                                  const Duration(seconds: 5),
+                                  onTimeout: () {
+                                    throw Exception('Connection timeout');
+                                  },
+                                );
+
                             debugPrint('Booking: write success key=${ref.key}');
 
+                            // Notifications
                             try {
                               await FirebaseDatabase.instance
                                   .ref('notifications/staff')
@@ -580,6 +600,7 @@ class _BookingScreenState extends State<BookingScreen> {
                             } catch (_) {}
 
                             if (!context.mounted) return;
+                            Navigator.pop(context); // Dismiss loading
 
                             Navigator.push(
                               context,
@@ -591,11 +612,23 @@ class _BookingScreenState extends State<BookingScreen> {
                               ),
                             );
                           } catch (e) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
+                            if (!context.mounted) return;
+                            Navigator.pop(context); // Dismiss loading
+
+                            // Show strict offline message
+                            showDialog(
+                              context: context,
+                              builder: (context) => AlertDialog(
+                                title: const Text('Internet Required'),
                                 content: Text(
-                                  'Booking failed: ${e.toString()}',
+                                  'You need an internet connection to book an appointment. Please check your connection and try again.\n\nError: $e',
                                 ),
+                                actions: [
+                                  TextButton(
+                                    onPressed: () => Navigator.pop(context),
+                                    child: const Text('OK'),
+                                  ),
+                                ],
                               ),
                             );
                           }

@@ -38,8 +38,6 @@ class _AiSkinAnalysisScreenState extends State<AiSkinAnalysisScreen> {
     if (widget.initialImage != null) {
       _selectedImage = widget.initialImage;
     }
-    // TEMPORARY: Reset limit for developer testing
-    _resetLimitForTesting();
   }
 
   Future<void> _resetLimitForTesting() async {

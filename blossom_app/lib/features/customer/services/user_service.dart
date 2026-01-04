@@ -406,9 +406,8 @@ class UserService {
       final profileUpdates = <String, dynamic>{
         'skinType': result['skinType'] ?? 'Unknown',
         'acneProne': metrics['acne']?['value'] ?? 'Unknown',
-        // We map Texture to Sensitivity as a proxy for this demo (Smooth = Low Sensitivity, Rough = High)
-        // or just leave it as is if there's no direct map.
-        // Let's also save the raw metrics to profile for potential future use
+        'sensitivity': metrics['sensitivity']?['value'] ?? 'Unknown',
+        'elasticity': metrics['elasticity']?['value'] ?? 'Unknown',
         'lastAnalysisDate': timestamp,
       };
 
@@ -417,6 +416,26 @@ class UserService {
       debugPrint('Error saving skin analysis (background): $e');
       rethrow; // Allow UI to handle error
     }
+  }
+
+  /// Helper to deeply convert Map<dynamic, dynamic> to Map<String, dynamic>
+  static Map<String, dynamic> _deepMapConvert(Map<dynamic, dynamic> map) {
+    final converted = <String, dynamic>{};
+    map.forEach((key, value) {
+      if (value is Map) {
+        converted[key.toString()] = _deepMapConvert(
+          value as Map<dynamic, dynamic>,
+        );
+      } else if (value is List) {
+        converted[key.toString()] = value.map((e) {
+          if (e is Map) return _deepMapConvert(e as Map<dynamic, dynamic>);
+          return e;
+        }).toList();
+      } else {
+        converted[key.toString()] = value;
+      }
+    });
+    return converted;
   }
 
   /// Get Skin Analysis History Stream
@@ -436,7 +455,12 @@ class UserService {
       final List<Map<String, dynamic>> history = [];
 
       map.forEach((key, value) {
-        history.add({'id': key, ...Map<String, dynamic>.from(value as Map)});
+        if (value is Map) {
+          final convertedValue = _deepMapConvert(
+            value as Map<dynamic, dynamic>,
+          );
+          history.add({'id': key, ...convertedValue});
+        }
       });
 
       // Sort by timestamp descending (newest first)

@@ -822,7 +822,7 @@ packages:
     source: hosted
     version: "2.3.2"
   url_launcher_web:
-    dependency: transitive
+    dependency: "direct main"
     description:
       name: url_launcher_web
       sha256: "4bd2b7b4dc4d4d0b94e5babfffbca8eac1a126c7f3d6ecbc1a11013faa3abba2"

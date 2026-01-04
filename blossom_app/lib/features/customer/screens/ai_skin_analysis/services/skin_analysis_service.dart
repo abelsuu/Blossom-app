@@ -8,7 +8,7 @@ import 'package:image_picker/image_picker.dart';
 class SkinAnalysisService {
   // TODO: Replace with your actual Gemini API Key from https://aistudio.google.com/app/apikey
   // The current key might be invalid or quota exceeded.
-  static const String _apiKey = 'AIzaSyCWRBOXbkzcD-cLuAvXDzhxCPEDxeacdos';
+  static const String _apiKey = 'AIzaSyDnFozLG2ECXEBRl2prr4yNz9DGmbmwkyk';
 
   /// Analyzes the skin from the provided image file.
   Future<Map<String, dynamic>> analyzeSkin(XFile imageFile) async {
@@ -43,7 +43,9 @@ class SkinAnalysisService {
           "texture": {"value": "String (e.g. Smooth, Uneven, Rough)", "status": "String (Good/Fair/Poor)"},
           "pores": {"value": "String (e.g. Tight, Visible, Enlarged)", "status": "String"},
           "pigmentation": {"value": "String (e.g. None, Mild, Spots)", "status": "String"},
-          "acne": {"value": "String (e.g. None, Mild, Severe)", "status": "String"}
+          "acne": {"value": "String (e.g. None, Mild, Severe)", "status": "String"},
+          "sensitivity": {"value": "String (e.g. Low, Medium, High)", "status": "String"},
+          "elasticity": {"value": "String (e.g. Good, Fair, Poor)", "status": "String"}
         },
         "summary": [
           "String (Detailed observation point 1)",
@@ -124,6 +126,14 @@ class SkinAnalysisService {
         },
         'acne': {
           'value': ['None', 'Mild', 'Severe'][random.nextInt(3)],
+          'status': ['Good', 'Fair', 'Poor'][random.nextInt(3)],
+        },
+        'sensitivity': {
+          'value': ['Low', 'Medium', 'High'][random.nextInt(3)],
+          'status': ['Good', 'Fair', 'Poor'][random.nextInt(3)],
+        },
+        'elasticity': {
+          'value': ['Good', 'Fair', 'Poor'][random.nextInt(3)],
           'status': ['Good', 'Fair', 'Poor'][random.nextInt(3)],
         },
       },
