@@ -1,16 +1,69 @@
-# blossom_app
+# Blossom App
 
-A new Flutter project.
+Blossom App is a cross-platform application for a beauty & wellness center, featuring:
+- **Customer App (Mobile):** For booking appointments, AI skin analysis, and loyalty rewards.
+- **Admin Portal (Web):** For managing bookings, staff, services, and users.
+- **Staff App (Mobile):** For managing schedules and appointments.
 
-## Getting Started
+---
 
-This project is a starting point for a Flutter application.
+## 🚀 How to Run the Application
 
-A few resources to get you started if this is your first Flutter project:
+### 1. Customer / Staff App (Mobile)
+To run the mobile application on your physical phone (Android/iOS) or emulator:
 
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
+1.  **Connect your device** via USB.
+2.  **Enable USB Debugging** on your phone (Developer Options).
+3.  Open a terminal in the project folder (`blossom_app`).
+4.  Run the following command:
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+```bash
+flutter run
+```
+
+*Note: If you have multiple devices connected, specify the device ID (e.g., `flutter run -d <device_id>`). Run `flutter devices` to list IDs.*
+
+### 2. Admin Dashboard (Web)
+The Admin Portal is optimized for Web. To launch it in a separate Chrome instance:
+
+```bash
+flutter run -d chrome --web-port=5000
+```
+
+*Note: The `--web-port=5000` flag is optional but recommended to keep a consistent testing address.*
+
+---
+
+## 🔌 FAQ: Phone Connection & Unplugging
+
+**Q: Does my phone have to be connected to my laptop to run the app?**
+**A: No, not permanently.**
+
+*   **During Development:** Yes, you need the cable connected to install the app and see the logs (errors, print statements) on your laptop.
+*   **After Installation:** Once the app is installed on your phone (after `flutter run` finishes installing), **you can unplug the cable**. The app is now installed on your device like any other app from the App Store.
+
+**Q: Can I run it if I unplug?**
+**A: Yes!** You can close the terminal, unplug your phone, and walk away. Just tap the **Blossom App** icon on your phone's home screen to open it.
+
+**Q: What do I need for it to work?**
+**A: Internet Connection.**
+Since the app connects to a cloud database (Firebase) to save bookings, fetch services, and perform AI analysis, **your phone must have an active internet connection (Wi-Fi or Mobile Data)**. It does **not** need to be on the same Wi-Fi as your laptop.
+
+---
+
+## ⚙️ Background Processes & Setup
+
+The application relies on **Firebase** for its backend. No manual local server (like Node.js or Python) needs to be started on your laptop for the mobile app to work. The "backend" runs in the cloud (Google Cloud Platform).
+
+**Key Requirements:**
+1.  **Internet Access:** The device must be online.
+2.  **Firebase Configuration:** Ensure `google-services.json` (Android) and `GoogleService-Info.plist` (iOS) are present in the project (already configured).
+3.  **CORS (For Web):** If you are developing the Admin Web Portal and encounter image upload errors, ensure CORS is configured on your Firebase Storage bucket (already handled via `cors.json`).
+
+---
+
+## 🛠 Troubleshooting
+
+*   **App stuck on "Syncing" or Loading:** Check your internet connection.
+*   **"Offline" status:** The app detects connection drops. Reconnect to Wi-Fi/Data.
+*   **Build Errors:** Run `flutter clean` and then `flutter pub get` to refresh dependencies.
