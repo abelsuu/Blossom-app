@@ -9,19 +9,34 @@ Blossom App is a cross-platform application for a beauty & wellness center, feat
 
 ## 🚀 How to Run the Application
 
-### 1. Customer / Staff App (Mobile)
-To run the mobile application on your physical phone (Android/iOS) or emulator:
+### 1. Customer / Staff App (Mobile) - First Time Setup
+To install and start the app on a new phone (or your own phone) for the first time:
 
-1.  **Connect your device** via USB.
-2.  **Enable USB Debugging** on your phone (Developer Options).
-3.  Open a terminal in the project folder (`blossom_app`).
-4.  Run the following command:
+1.  **Connect the Phone:** Plug your phone into the laptop via USB.
+2.  **Enable USB Debugging:**
+    *   Go to **Settings > About Phone**.
+    *   Tap **Build Number** 7 times to enable Developer Options.
+    *   Go back to **Settings > System > Developer Options**.
+    *   Turn on **USB Debugging**.
+3.  **Run the Installation Command:**
+    Open a terminal in the project folder (`blossom_app`) and run:
 
 ```bash
 flutter run
 ```
 
-*Note: If you have multiple devices connected, specify the device ID (e.g., `flutter run -d <device_id>`). Run `flutter devices` to list IDs.*
+#### Running on a Specific Device
+If you have multiple devices connected (e.g., your phone AND a Chrome browser), you need to specify which one to use.
+
+1.  List available devices to find your **Device ID**:
+    ```bash
+    flutter devices
+    ```
+2.  Run with the specific ID (example ID: `53F0219509003796`):
+    ```bash
+    flutter run -d 53F0219509003796
+    ```
+    *(Replace `53F0219509003796` with your actual device ID).*
 
 ### 2. Admin Dashboard (Web)
 The Admin Portal is optimized for Web. To launch it in a separate Chrome instance:
