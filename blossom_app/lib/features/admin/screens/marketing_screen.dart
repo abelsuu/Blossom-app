@@ -1,5 +1,9 @@
 import 'package:blossom_app/features/customer/services/promotions_service.dart';
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:firebase_storage/firebase_storage.dart';
+import 'package:intl/intl.dart';
+import 'dart:typed_data';
 
 class MarketingScreen extends StatefulWidget {
   const MarketingScreen({super.key});
@@ -11,6 +15,12 @@ class MarketingScreen extends StatefulWidget {
 class _MarketingScreenState extends State<MarketingScreen> {
   final _titleController = TextEditingController();
   final _subtitleController = TextEditingController();
+  final _descriptionController = TextEditingController();
+  final _treatmentsController = TextEditingController();
+  DateTime? _validUntil;
+  String? _uploadedImageUrl;
+  bool _isUploading = false;
+
   int _selectedThemeIndex = 0;
   int _selectedImageIndex = 0;
   String? _editingId;
@@ -61,6 +71,8 @@ class _MarketingScreenState extends State<MarketingScreen> {
   void dispose() {
     _titleController.dispose();
     _subtitleController.dispose();
+    _descriptionController.dispose();
+    _treatmentsController.dispose();
     super.dispose();
   }
 
@@ -69,16 +81,30 @@ class _MarketingScreenState extends State<MarketingScreen> {
       _editingId = promo['id'];
       _titleController.text = promo['title'] ?? '';
       _subtitleController.text = promo['subtitle'] ?? '';
+      _descriptionController.text = promo['description'] ?? '';
+      _treatmentsController.text = promo['applicableTreatments'] ?? '';
+
+      if (promo['validUntil'] != null) {
+        _validUntil = DateTime.tryParse(promo['validUntil']);
+      } else {
+        _validUntil = null;
+      }
 
       // Find matching theme or default to 0
       final promoColor = promo['color'];
       final themeIndex = _themes.indexWhere((t) => t['color'] == promoColor);
       _selectedThemeIndex = themeIndex != -1 ? themeIndex : 0;
 
-      // Find matching image or default to 0
+      // Find matching image or set as uploaded
       final promoImage = promo['imageUrl'];
       final imageIndex = _images.indexOf(promoImage);
-      _selectedImageIndex = imageIndex != -1 ? imageIndex : 0;
+      if (imageIndex != -1) {
+        _selectedImageIndex = imageIndex;
+        _uploadedImageUrl = null;
+      } else {
+        _selectedImageIndex = -1; // Custom image
+        _uploadedImageUrl = promoImage;
+      }
     });
   }
 
@@ -87,6 +113,10 @@ class _MarketingScreenState extends State<MarketingScreen> {
       _editingId = null;
       _titleController.clear();
       _subtitleController.clear();
+      _descriptionController.clear();
+      _treatmentsController.clear();
+      _validUntil = null;
+      _uploadedImageUrl = null;
       _selectedThemeIndex = 0;
       _selectedImageIndex = 0;
     });
@@ -100,11 +130,24 @@ class _MarketingScreenState extends State<MarketingScreen> {
       return;
     }
 
+    String imageUrl;
+    if (_uploadedImageUrl != null) {
+      imageUrl = _uploadedImageUrl!;
+    } else if (_selectedImageIndex >= 0 &&
+        _selectedImageIndex < _images.length) {
+      imageUrl = _images[_selectedImageIndex];
+    } else {
+      imageUrl = _images[0]; // Fallback
+    }
+
     final theme = _themes[_selectedThemeIndex];
     final promo = {
       'title': _titleController.text,
       'subtitle': _subtitleController.text,
-      'imageUrl': _images[_selectedImageIndex],
+      'description': _descriptionController.text,
+      'applicableTreatments': _treatmentsController.text,
+      'validUntil': _validUntil?.toIso8601String(),
+      'imageUrl': imageUrl,
       'color': theme['color'],
       'textColor': theme['textColor'],
       'pillColor': theme['pillColor'],
@@ -130,6 +173,10 @@ class _MarketingScreenState extends State<MarketingScreen> {
       );
       _titleController.clear();
       _subtitleController.clear();
+      _descriptionController.clear();
+      _treatmentsController.clear();
+      _validUntil = null;
+      _uploadedImageUrl = null;
     }
   }
 
@@ -154,6 +201,53 @@ class _MarketingScreenState extends State<MarketingScreen> {
         ],
       ),
     );
+  }
+
+  Future<void> _pickAndUploadImage() async {
+    final picker = ImagePicker();
+    final XFile? image = await picker.pickImage(source: ImageSource.gallery);
+
+    if (image == null) return;
+
+    setState(() {
+      _isUploading = true;
+    });
+
+    try {
+      // Create a reference to the location you want to upload to in firebase
+      final storageRef = FirebaseStorage.instance.ref().child(
+        'promotions/${DateTime.now().millisecondsSinceEpoch}_${image.name}',
+      );
+
+      final metadata = SettableMetadata(
+        contentType: image.mimeType ?? 'image/jpeg',
+      );
+
+      // Upload the file
+      final data = await image.readAsBytes();
+      await storageRef.putData(data, metadata);
+
+      // Get the download URL
+      final downloadUrl = await storageRef.getDownloadURL();
+
+      setState(() {
+        _uploadedImageUrl = downloadUrl;
+        _selectedImageIndex = -1; // Deselect presets
+      });
+    } catch (e) {
+      debugPrint('Error uploading image: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error uploading image: $e')));
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isUploading = false;
+        });
+      }
+    }
   }
 
   @override
@@ -362,6 +456,76 @@ class _MarketingScreenState extends State<MarketingScreen> {
                             icon: Icons.subtitles,
                             hint: 'e.g. Free gift included',
                           ),
+                          const SizedBox(height: 16),
+
+                          // Valid Until Date Picker
+                          InkWell(
+                            onTap: () async {
+                              final date = await showDatePicker(
+                                context: context,
+                                initialDate: _validUntil ?? DateTime.now(),
+                                firstDate: DateTime.now(),
+                                lastDate: DateTime.now().add(
+                                  const Duration(days: 365),
+                                ),
+                              );
+                              if (date != null) {
+                                setState(() {
+                                  _validUntil = date;
+                                });
+                              }
+                            },
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 16,
+                              ),
+                              decoration: BoxDecoration(
+                                color: const Color(
+                                  0xFFFFF8E1,
+                                ).withValues(alpha: 0.5),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Row(
+                                children: [
+                                  const Icon(
+                                    Icons.calendar_today,
+                                    color: Color(0xFFCFA6A6),
+                                    size: 20,
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Text(
+                                    _validUntil != null
+                                        ? 'Valid Until: ${DateFormat('yyyy-MM-dd').format(_validUntil!)}'
+                                        : 'Select Expiry Date',
+                                    style: TextStyle(
+                                      color: _validUntil != null
+                                          ? Colors.black87
+                                          : Colors.grey.shade400,
+                                      fontSize: 16,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+
+                          _buildCreativeTextField(
+                            controller: _descriptionController,
+                            label: 'Detailed Information',
+                            icon: Icons.info_outline,
+                            hint: 'Terms, conditions, description...',
+                            maxLines: 3,
+                          ),
+                          const SizedBox(height: 16),
+
+                          _buildCreativeTextField(
+                            controller: _treatmentsController,
+                            label: 'Applicable Treatment (Exact Name)',
+                            icon: Icons.spa,
+                            hint: 'e.g. Anti-Aging Facial',
+                          ),
                           const SizedBox(height: 24),
 
                           // Theme Selector
@@ -430,6 +594,35 @@ class _MarketingScreenState extends State<MarketingScreen> {
                             style: TextStyle(
                               fontWeight: FontWeight.bold,
                               color: Color(0xFF5D5343),
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+                          OutlinedButton.icon(
+                            onPressed: _isUploading
+                                ? null
+                                : _pickAndUploadImage,
+                            icon: _isUploading
+                                ? const SizedBox(
+                                    width: 20,
+                                    height: 20,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                    ),
+                                  )
+                                : const Icon(Icons.upload_file),
+                            label: Text(
+                              _isUploading
+                                  ? 'Uploading...'
+                                  : 'Upload Custom Image',
+                            ),
+                            style: OutlinedButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(
+                                vertical: 12,
+                                horizontal: 16,
+                              ),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
                             ),
                           ),
                           const SizedBox(height: 12),
@@ -639,6 +832,16 @@ class _MarketingScreenState extends State<MarketingScreen> {
 
   Widget _buildLivePreviewCard() {
     final theme = _themes[_selectedThemeIndex];
+    String imageUrl;
+    if (_uploadedImageUrl != null) {
+      imageUrl = _uploadedImageUrl!;
+    } else if (_selectedImageIndex >= 0 &&
+        _selectedImageIndex < _images.length) {
+      imageUrl = _images[_selectedImageIndex];
+    } else {
+      imageUrl = _images[0];
+    }
+
     return Container(
       width: 280,
       height: 160,
@@ -705,7 +908,7 @@ class _MarketingScreenState extends State<MarketingScreen> {
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 image: DecorationImage(
-                  image: NetworkImage(_images[_selectedImageIndex]),
+                  image: NetworkImage(imageUrl),
                   fit: BoxFit.cover,
                 ),
                 border: Border.all(color: Colors.white, width: 4),
@@ -728,6 +931,7 @@ class _MarketingScreenState extends State<MarketingScreen> {
     required String label,
     required IconData icon,
     String? hint,
+    int maxLines = 1,
   }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -743,11 +947,19 @@ class _MarketingScreenState extends State<MarketingScreen> {
         const SizedBox(height: 8),
         TextField(
           controller: controller,
+          maxLines: maxLines,
           onChanged: (_) => setState(() {}), // Trigger rebuild for preview
           decoration: InputDecoration(
             hintText: hint,
             hintStyle: TextStyle(color: Colors.grey.shade300),
-            prefixIcon: Icon(icon, color: const Color(0xFFCFA6A6), size: 20),
+            prefixIcon: maxLines == 1
+                ? Icon(icon, color: const Color(0xFFCFA6A6), size: 20)
+                : Container(
+                    padding: const EdgeInsets.only(
+                      bottom: 48,
+                    ), // Align icon top
+                    child: Icon(icon, color: const Color(0xFFCFA6A6), size: 20),
+                  ),
             filled: true,
             fillColor: const Color(0xFFFFF8E1).withValues(alpha: 0.5),
             border: OutlineInputBorder(
@@ -758,7 +970,10 @@ class _MarketingScreenState extends State<MarketingScreen> {
               borderRadius: BorderRadius.circular(12),
               borderSide: const BorderSide(color: Color(0xFFCFA6A6), width: 1),
             ),
-            contentPadding: const EdgeInsets.symmetric(vertical: 16),
+            contentPadding: const EdgeInsets.symmetric(
+              vertical: 16,
+              horizontal: 12,
+            ),
           ),
         ),
       ],

@@ -13,6 +13,7 @@ import 'package:blossom_app/features/customer/screens/location/contact_info_scre
 import 'package:blossom_app/features/customer/services/catalog_service.dart';
 import 'package:blossom_app/features/customer/services/promotions_service.dart';
 import 'package:blossom_app/features/customer/services/user_service.dart';
+import 'package:blossom_app/features/customer/screens/special_offer_details_screen.dart';
 import 'package:intl/intl.dart';
 
 class CustomerHomeScreen extends StatefulWidget {
@@ -620,13 +621,24 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
             separatorBuilder: (context, index) => const SizedBox(width: 16),
             itemBuilder: (context, index) {
               final promo = promotions[index];
-              return _buildDealCard(
-                color: Color(promo['color'] ?? 0xFF556B2F),
-                title: promo['title'] ?? '',
-                subtitle: promo['subtitle'] ?? '',
-                imageUrl: promo['imageUrl'] ?? '',
-                textColor: Color(promo['textColor'] ?? 0xFFFFFFFF),
-                pillColor: Color(promo['pillColor'] ?? 0xCCFFFFFF),
+              return GestureDetector(
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) =>
+                          SpecialOfferDetailsScreen(promo: promo),
+                    ),
+                  );
+                },
+                child: _buildDealCard(
+                  color: Color(promo['color'] ?? 0xFF556B2F),
+                  title: promo['title'] ?? '',
+                  subtitle: promo['subtitle'] ?? '',
+                  imageUrl: promo['imageUrl'] ?? '',
+                  textColor: Color(promo['textColor'] ?? 0xFFFFFFFF),
+                  pillColor: Color(promo['pillColor'] ?? 0xCCFFFFFF),
+                ),
               );
             },
           );
