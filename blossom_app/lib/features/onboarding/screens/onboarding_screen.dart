@@ -178,24 +178,9 @@ class OnboardingPage extends StatelessWidget {
       fit: StackFit.expand,
       children: [
         // Background Image
-        Image.network(
+        Image.asset(
           imageUrl,
           fit: BoxFit.cover,
-          loadingBuilder: (context, child, loadingProgress) {
-            if (loadingProgress == null) return child;
-            return Container(
-              color: const Color(0xFFFFF8E1), // Beige background
-              child: Center(
-                child: CircularProgressIndicator(
-                  value: loadingProgress.expectedTotalBytes != null
-                      ? loadingProgress.cumulativeBytesLoaded /
-                            loadingProgress.expectedTotalBytes!
-                      : null,
-                  color: const Color(0xFFCFA6A6), // Dusty Rose
-                ),
-              ),
-            );
-          },
           errorBuilder: (context, error, stackTrace) {
             return Container(
               color: const Color(0xFFFFF8E1), // Beige background
