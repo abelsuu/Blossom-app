@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_database/firebase_database.dart';
+import 'dart:convert';
+import 'dart:typed_data';
 import 'package:intl/intl.dart';
 import 'add_user_screen.dart';
 
@@ -262,6 +264,13 @@ class _UsersScreenState extends State<UsersScreen> {
                               final isStaffAccount = emailLower.startsWith(
                                 'staff',
                               );
+
+                              String? photoBase64;
+                              if (profile is Map) {
+                                photoBase64 = profile['photoBase64']
+                                    ?.toString();
+                              }
+
                               // Show all users, even if they have a staff domain
                               // This allows admins to see staff who signed up as customers
                               rows.add({
@@ -270,6 +279,7 @@ class _UsersScreenState extends State<UsersScreen> {
                                 'email': email,
                                 'phone': phone,
                                 'date': dateStr,
+                                'photoBase64': photoBase64,
                                 'isStaff':
                                     isStaffAccount, // Optional: for UI indication
                               });
@@ -286,6 +296,7 @@ class _UsersScreenState extends State<UsersScreen> {
                               row['email'] as String,
                               row['phone'] as String,
                               row['date'] as String,
+                              row['photoBase64'] as String?,
                             );
                           },
                         );
@@ -307,7 +318,15 @@ class _UsersScreenState extends State<UsersScreen> {
     String email,
     String phone,
     String date,
+    String? photoBase64,
   ) {
+    Uint8List? photoBytes;
+    if (photoBase64 != null && photoBase64.isNotEmpty) {
+      try {
+        photoBytes = base64Decode(photoBase64);
+      } catch (_) {}
+    }
+
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 8),
       decoration: BoxDecoration(
@@ -315,6 +334,24 @@ class _UsersScreenState extends State<UsersScreen> {
       ),
       child: Row(
         children: [
+          Container(
+            width: 40,
+            height: 40,
+            margin: const EdgeInsets.only(right: 12),
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: Colors.grey.shade200,
+              image: photoBytes != null
+                  ? DecorationImage(
+                      image: MemoryImage(photoBytes),
+                      fit: BoxFit.cover,
+                    )
+                  : null,
+            ),
+            child: photoBytes == null
+                ? const Icon(Icons.person, color: Colors.grey)
+                : null,
+          ),
           Expanded(
             flex: 2,
             child: Text(

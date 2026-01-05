@@ -156,7 +156,7 @@ class LoginScreen extends StatelessWidget {
 
                     try {
                       // Check for admin email before attempting login
-                      if (email.startsWith('ad.blossom')) {
+                      if (email.startsWith('admin') || email.startsWith('ad.blossom')) {
                         ScaffoldMessenger.of(context).showSnackBar(
                           const SnackBar(
                             content: Text(

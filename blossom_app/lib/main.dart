@@ -169,15 +169,35 @@ class MyApp extends StatelessWidget {
                     if (snapshot.hasData) {
                       final user = snapshot.data!;
                       final email = user.email;
+                      
                       if (email != null) {
-                        if (email.startsWith('admin')) {
+                        final isAdmin = email.startsWith('admin') || email.startsWith('ad.blossom');
+                        
+                        // Scenario 1: Admin Portal (Web, no FORCE_ONBOARDING)
+                        if (kIsWeb && !kForceOnboarding) {
+                          if (!isAdmin) {
+                            // Non-admin trying to access Admin Portal
+                            // Sign out and show Admin Auth
+                            FirebaseAuth.instance.signOut();
+                            return const AdminAuthScreen();
+                          }
                           return const MainLayout();
-                        } else if (email.startsWith('staff')) {
+                        }
+                        
+                        // Scenario 2: Customer/Staff Portal (Mobile or Web with FORCE_ONBOARDING)
+                        if (isAdmin) {
+                          // Admin trying to access Customer/Staff App
+                          // Sign out and show Onboarding/Login
+                          FirebaseAuth.instance.signOut();
+                          return const OnboardingScreen();
+                        }
+                        
+                        if (email.startsWith('staff')) {
                           return const StaffDashboard();
                         }
                       }
-                      // If web, prefer staying in admin flow or show specific web customer view?
-                      // For now, if logged in as customer on web, we show CustomerHome.
+                      
+                      // Default to Customer Home for non-admin, non-staff users
                       return const CustomerHomeScreen();
                     }
                     // Not logged in

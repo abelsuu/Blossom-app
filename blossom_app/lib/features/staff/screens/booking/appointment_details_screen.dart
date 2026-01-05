@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'dart:convert';
+import 'dart:typed_data';
 import 'package:blossom_app/features/staff/services/staff_service.dart';
 import 'package:blossom_app/features/customer/services/catalog_service.dart';
 import 'package:blossom_app/common/widgets/multi_select_dropdown.dart';
@@ -290,11 +292,24 @@ class _AppointmentDetailsScreenState extends State<AppointmentDetailsScreen> {
                     profile?['email']?.toString() ??
                     '');
 
+                // Decode profile picture
+                final photoBase64 = profile?['photoBase64']?.toString();
+                Uint8List? photoBytes;
+                if (photoBase64 != null && photoBase64.isNotEmpty) {
+                  try {
+                    photoBytes = base64Decode(photoBase64);
+                  } catch (_) {
+                    photoBytes = null;
+                  }
+                }
+
                 return Row(
                   children: [
                     CircleAvatar(
                       radius: 30,
-                      backgroundImage: NetworkImage(_customerImage),
+                      backgroundImage: photoBytes != null
+                          ? MemoryImage(photoBytes)
+                          : NetworkImage(_customerImage) as ImageProvider,
                     ),
                     const SizedBox(width: 15),
                     Expanded(

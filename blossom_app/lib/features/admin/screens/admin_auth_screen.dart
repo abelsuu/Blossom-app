@@ -30,13 +30,11 @@ class _AdminAuthScreenState extends State<AdminAuthScreen> {
       final email = _emailController.text.trim();
       final password = _passwordController.text;
 
-      if (!email.startsWith('ad.blossom')) {
+      if (!email.startsWith('admin') && !email.startsWith('ad.blossom')) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-              content: Text(
-                'Access Denied: Only admin accounts (starting with "ad.blossom") are allowed.',
-              ),
+              content: Text('Access Denied: Only admin accounts are allowed.'),
               behavior: SnackBarBehavior.floating,
             ),
           );
@@ -80,7 +78,8 @@ class _AdminAuthScreenState extends State<AdminAuthScreen> {
         if (snapshot.hasData) {
           final user = snapshot.data!;
           final email = user.email;
-          if (email != null && email.startsWith('ad')) {
+          if (email != null &&
+              (email.startsWith('admin') || email.startsWith('ad.blossom'))) {
             return const MainLayout();
           }
         }
