@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_database/firebase_database.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:firebase_storage/firebase_storage.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class AddServiceScreen extends StatefulWidget {
   final VoidCallback onSave;
@@ -104,6 +105,12 @@ class _AddServiceScreenState extends State<AddServiceScreen> {
     if (_pickedFile == null || _imageBytes == null) return _existingImageUrl;
 
     try {
+      // Check if user is authenticated
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) {
+        throw Exception('User not authenticated. Please sign in again.');
+      }
+
       final storageRef = FirebaseStorage.instance.ref().child(
         'service_images/${DateTime.now().millisecondsSinceEpoch}_${_pickedFile!.name}',
       );
@@ -115,9 +122,14 @@ class _AddServiceScreenState extends State<AddServiceScreen> {
       // Create upload task
       final uploadTask = storageRef.putData(_imageBytes!, metadata);
 
+      // Monitor upload progress
+      uploadTask.snapshotEvents.listen((TaskSnapshot snapshot) {
+        debugPrint('Upload progress: ${snapshot.bytesTransferred}/${snapshot.totalBytes}');
+      });
+
       // Wait for completion with timeout
       await uploadTask.timeout(
-        const Duration(seconds: 45),
+        const Duration(seconds: 60), // Increased timeout
         onTimeout: () {
           throw Exception(
             'Upload timed out. Please check your internet connection and try again.',
@@ -125,8 +137,11 @@ class _AddServiceScreenState extends State<AddServiceScreen> {
         },
       );
 
-      return await storageRef.getDownloadURL();
+      final downloadUrl = await storageRef.getDownloadURL();
+      debugPrint('Upload successful: $downloadUrl');
+      return downloadUrl;
     } catch (e) {
+      debugPrint('Upload error: $e');
       throw Exception('Error uploading image: $e');
     }
   }
