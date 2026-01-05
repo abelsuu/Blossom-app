@@ -35,6 +35,8 @@ class _AddServiceScreenState extends State<AddServiceScreen> {
   Uint8List? _imageBytes;
   String? _existingImageUrl;
   String _selectedCategory = 'Body';
+  String _manualImageUrl = '';
+  bool _useManualUrl = false;
 
   @override
   void initState() {
@@ -102,6 +104,12 @@ class _AddServiceScreenState extends State<AddServiceScreen> {
   }
 
   Future<String?> _uploadImage() async {
+    // If using manual URL, return it directly
+    if (_useManualUrl) {
+      return _manualImageUrl.isNotEmpty ? _manualImageUrl : _existingImageUrl;
+    }
+
+    // Otherwise, try to upload file (but this will fail on free plan)
     if (_pickedFile == null || _imageBytes == null) return _existingImageUrl;
 
     try {
@@ -558,10 +566,72 @@ class _AddServiceScreenState extends State<AddServiceScreen> {
                   child: Column(
                     children: [
                       const SizedBox(height: 30), // Align with form top roughly
+
+                      // Toggle between file upload and manual URL
+                      Row(
+                        children: [
+                          const Text(
+                            'Upload File',
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.bold,
+                              color: Color(0xFF5D5343),
+                            ),
+                          ),
+                          Switch(
+                            value: _useManualUrl,
+                            onChanged: (value) {
+                              setState(() {
+                                _useManualUrl = value;
+                                if (value) {
+                                  _pickedFile = null;
+                                  _imageBytes = null;
+                                }
+                              });
+                            },
+                            activeColor: const Color(0xFF5D5343),
+                          ),
+                          const Text(
+                            'Manual URL',
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.bold,
+                              color: Color(0xFF5D5343),
+                            ),
+                          ),
+                        ],
+                      ),
+
+                      const SizedBox(height: 16),
+
+                      // Manual URL input field
+                      if (_useManualUrl) ...[
+                        TextField(
+                          onChanged: (value) {
+                            _manualImageUrl = value;
+                          },
+                          decoration: InputDecoration(
+                            hintText: 'Enter image URL...',
+                            filled: true,
+                            fillColor: const Color(0xFFE5E0D0),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: BorderSide.none,
+                            ),
+                            contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 12,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                      ],
+
+                      // Image preview/upload area
                       GestureDetector(
-                        onTap: _pickImage,
+                        onTap: _useManualUrl ? null : _pickImage,
                         child: Container(
-                          height: 250,
+                          height: 200,
                           width: double.infinity,
                           decoration: BoxDecoration(
                             color: const Color(0xFFE5E0D0),
@@ -600,14 +670,15 @@ class _AddServiceScreenState extends State<AddServiceScreen> {
                                   ),
                                 )
                               : (_imageBytes == null &&
-                                        _existingImageUrl == null
+                                        _existingImageUrl == null &&
+                                        !_useManualUrl
                                     ? Column(
                                         mainAxisAlignment:
                                             MainAxisAlignment.center,
                                         children: const [
                                           Icon(
                                             Icons.cloud_upload_outlined,
-                                            size: 64,
+                                            size: 48,
                                             color: Color(0xFF5D5343),
                                           ),
                                           SizedBox(height: 8),
@@ -620,10 +691,48 @@ class _AddServiceScreenState extends State<AddServiceScreen> {
                                           ),
                                         ],
                                       )
-                                    : null),
+                                    : _useManualUrl &&
+                                            _manualImageUrl.isEmpty &&
+                                            _existingImageUrl == null
+                                        ? Column(
+                                            mainAxisAlignment:
+                                                MainAxisAlignment.center,
+                                            children: const [
+                                              Icon(
+                                                Icons.link,
+                                                size: 48,
+                                                color: Color(0xFF5D5343),
+                                              ),
+                                              SizedBox(height: 8),
+                                              Text(
+                                                'Enter URL above',
+                                                style: TextStyle(
+                                                  color: Color(0xFF5D5343),
+                                                  fontWeight: FontWeight.bold,
+                                                ),
+                                              ),
+                                            ],
+                                          )
+                                        : null),
                         ),
                       ),
+
                       const SizedBox(height: 16),
+
+                      // Warning text for manual upload
+                      if (!_useManualUrl) ...[
+                        const Text(
+                          '⚠️ Upload disabled on free plan',
+                          style: TextStyle(
+                            color: Colors.red,
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                        const SizedBox(height: 8),
+                      ],
+
                       ElevatedButton(
                         onPressed: _isSaving ? null : _saveService,
                         style: ElevatedButton.styleFrom(
