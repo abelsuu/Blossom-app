@@ -203,6 +203,7 @@ class _AddServiceScreenState extends State<AddServiceScreen> {
           'price': price,
           'duration': duration,
           'time': duration,
+          'image': imageUrl, // Set both image and imageUrl for compatibility
           'imageUrl': imageUrl,
           'updatedAt': ServerValue.timestamp,
           'category': _selectedCategory,
@@ -236,6 +237,7 @@ class _AddServiceScreenState extends State<AddServiceScreen> {
           'price': price,
           'duration': duration,
           'time': duration,
+          'image': imageUrl, // Set both image and imageUrl for compatibility
           'imageUrl': imageUrl,
           'category': _selectedCategory,
           'createdAt': ServerValue.timestamp,
