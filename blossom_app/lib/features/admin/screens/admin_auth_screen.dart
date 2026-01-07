@@ -90,14 +90,13 @@ class _AdminAuthScreenState extends State<AdminAuthScreen> {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   // Logo
-                  Container(
-                    width: 80,
-                    height: 80,
-                    decoration: const BoxDecoration(
-                      color: Color(0xFF5D5343),
-                      shape: BoxShape.circle,
+                  ClipOval(
+                    child: Image.asset(
+                      'assets/images/logo.jpeg',
+                      width: 150,
+                      height: 150,
+                      fit: BoxFit.cover,
                     ),
-                    child: const Icon(Icons.spa, color: Colors.white, size: 40),
                   ),
                   const SizedBox(height: 24),
                   const Text(

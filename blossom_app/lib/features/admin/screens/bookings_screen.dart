@@ -350,6 +350,7 @@ class _BookingsScreenState extends State<BookingsScreen> {
                                   ),
                                   child: DropdownButtonHideUnderline(
                                     child: DropdownButtonFormField<String>(
+                                      // ignore: deprecated_member_use
                                       value: staffController.text.isEmpty
                                           ? null
                                           : staffController.text,
@@ -448,6 +449,23 @@ class _BookingsScreenState extends State<BookingsScreen> {
                           ],
                         ),
 
+                        const SizedBox(height: 24),
+                        if (docId != null) ...[
+                          _buildDetailRow(
+                            'Status',
+                            (data?['status'] ?? 'Pending').toString(),
+                          ),
+                          if (data?['confirmedBy'] != null)
+                            _buildDetailRow(
+                              'Confirmed By',
+                              data!['confirmedBy'].toString(),
+                            ),
+                          if (data?['completedBy'] != null)
+                            _buildDetailRow(
+                              'Completed By',
+                              data!['completedBy'].toString(),
+                            ),
+                        ],
                         const SizedBox(height: 40),
 
                         // Buttons
@@ -484,12 +502,14 @@ class _BookingsScreenState extends State<BookingsScreen> {
                                     return;
                                   }
 
+                                  final newDate = dateController.text.trim();
+                                  final newTime = timeController.text.trim();
                                   final Map<String, dynamic> bookingData = {
                                     'customerName': nameController.text.trim(),
                                     'services': selectedServices,
                                     'staff': staffController.text.trim(),
-                                    'date': dateController.text.trim(),
-                                    'time': timeController.text.trim(),
+                                    'date': newDate,
+                                    'time': newTime,
                                     'status': (data?['status'] ?? 'Pending'),
                                     'updatedAt': ServerValue.timestamp,
                                   };
@@ -498,8 +518,61 @@ class _BookingsScreenState extends State<BookingsScreen> {
                                     bookingData['timestamp'] =
                                         ServerValue.timestamp;
                                     final newRef = _db.push();
+                                    final newId = newRef.key!;
+
+                                    // Reserve Availability
+                                    final safeTime = newTime.replaceAll(
+                                      '.',
+                                      ':',
+                                    );
+                                    await FirebaseDatabase.instance
+                                        .ref('availability/$newDate/$safeTime')
+                                        .set(newId);
+
                                     await newRef.set(bookingData);
                                   } else {
+                                    // Check for Reschedule to update Availability & History
+                                    final oldDate = data?['date'];
+                                    final oldTime = data?['time'];
+
+                                    if (oldDate != newDate ||
+                                        oldTime != newTime) {
+                                      // 1. Swap Availability
+                                      if (oldDate != null && oldTime != null) {
+                                        final oldSafeTime = oldTime
+                                            .toString()
+                                            .replaceAll('.', ':');
+                                        await FirebaseDatabase.instance
+                                            .ref(
+                                              'availability/$oldDate/$oldSafeTime',
+                                            )
+                                            .remove();
+                                      }
+                                      final safeTime = newTime.replaceAll(
+                                        '.',
+                                        ':',
+                                      );
+                                      await FirebaseDatabase.instance
+                                          .ref(
+                                            'availability/$newDate/$safeTime',
+                                          )
+                                          .set(docId);
+
+                                      // 2. Log History
+                                      await _db
+                                          .child('$docId/history')
+                                          .push()
+                                          .set({
+                                            'action': 'reschedule',
+                                            'oldDate': oldDate,
+                                            'oldTime': oldTime,
+                                            'newDate': newDate,
+                                            'newTime': newTime,
+                                            'updatedBy': 'Admin',
+                                            'timestamp': ServerValue.timestamp,
+                                          });
+                                    }
+
                                     await _db.child(docId).update(bookingData);
                                   }
 
@@ -569,6 +642,25 @@ class _BookingsScreenState extends State<BookingsScreen> {
             ),
           );
         },
+      ),
+    );
+  }
+
+  Widget _buildDetailRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(label, style: TextStyle(color: Colors.grey.shade500)),
+          Text(
+            value,
+            style: const TextStyle(
+              color: Color(0xFF5D5343),
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -823,7 +915,7 @@ class _BookingsScreenState extends State<BookingsScreen> {
                           style: const TextStyle(fontWeight: FontWeight.bold),
                         ),
                         subtitle: Text(
-                          '$serviceStr - ${booking['date']} ${booking['time'] ?? ''}\nStaff: ${booking['staff'] ?? ''}',
+                          '$serviceStr - ${booking['date']} ${booking['time'] ?? ''}\nStaff: ${booking['staff'] ?? booking['confirmedBy'] ?? booking['completedBy'] ?? 'Unassigned'}',
                         ),
                         isThreeLine: true,
                         trailing: Row(

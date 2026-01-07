@@ -101,9 +101,51 @@ class _MyBookingsScreenState extends State<MyBookingsScreen>
                       child: ElevatedButton(
                         onPressed: () async {
                           try {
+                            // Update booking status
                             await FirebaseDatabase.instance
                                 .ref('bookings/$bookingId')
-                                .remove();
+                                .update({
+                                  'status': 'cancelled',
+                                  'cancelledBy': 'customer',
+                                  'cancellationReason': 'Cancelled by customer',
+                                });
+
+                            // Send Notification to Staff
+                            try {
+                              final bookingSnapshot = await FirebaseDatabase
+                                  .instance
+                                  .ref('bookings/$bookingId')
+                                  .get();
+
+                              if (bookingSnapshot.exists) {
+                                final booking = Map<String, dynamic>.from(
+                                  bookingSnapshot.value as Map,
+                                );
+                                final date = booking['date'] ?? 'Unknown Date';
+                                final time = booking['time'] ?? 'Unknown Time';
+                                final customerName =
+                                    booking['userName'] ?? 'Customer';
+
+                                // Push to a shared staff notifications node
+                                await FirebaseDatabase.instance
+                                    .ref('notifications/staff')
+                                    .push()
+                                    .set({
+                                      'title': 'Booking Cancelled',
+                                      'message':
+                                          '$customerName cancelled appointment on $date at $time',
+                                      'timestamp': ServerValue.timestamp,
+                                      'type': 'booking_cancelled',
+                                      'bookingId': bookingId,
+                                      'read': false,
+                                    });
+                              }
+                            } catch (e) {
+                              debugPrint(
+                                'Error sending staff notification: $e',
+                              );
+                            }
+
                             if (context.mounted) Navigator.pop(context);
                           } catch (e) {
                             if (context.mounted) {
@@ -175,11 +217,18 @@ class _MyBookingsScreenState extends State<MyBookingsScreen>
       final filtered = bookings.where((booking) {
         try {
           final bookingDate = DateFormat('yyyy-MM-dd').parse(booking['date']);
+          final status = (booking['status'] ?? '').toString().toLowerCase();
+          final isCompletedOrCancelled =
+              status == 'completed' || status == 'cancelled';
+
           if (isUpcoming) {
-            return bookingDate.isAfter(today) ||
-                bookingDate.isAtSameMomentAs(today);
+            // Show only if NOT completed/cancelled AND date is today/future
+            return !isCompletedOrCancelled &&
+                (bookingDate.isAfter(today) ||
+                    bookingDate.isAtSameMomentAs(today));
           } else {
-            return bookingDate.isBefore(today);
+            // Show if completed/cancelled OR date is past
+            return isCompletedOrCancelled || bookingDate.isBefore(today);
           }
         } catch (e) {
           return false;
@@ -278,9 +327,17 @@ class _MyBookingsScreenState extends State<MyBookingsScreen>
               controller: _tabController,
               children: [
                 // Upcoming Tab
-                _buildUpcomingTab(),
+                _BookingsList(
+                  isUpcoming: true,
+                  bookingsStream: _getBookingsStream(true),
+                  onCancel: _showCancelDialog,
+                ),
                 // Past Tab
-                _buildPastTab(),
+                _BookingsList(
+                  isUpcoming: false,
+                  bookingsStream: _getBookingsStream(false),
+                  onCancel: _showCancelDialog,
+                ),
               ],
             ),
           ),
@@ -288,10 +345,33 @@ class _MyBookingsScreenState extends State<MyBookingsScreen>
       ),
     );
   }
+}
 
-  Widget _buildUpcomingTab() {
+class _BookingsList extends StatefulWidget {
+  final bool isUpcoming;
+  final Stream<List<Map<String, dynamic>>> bookingsStream;
+  final Function(String) onCancel;
+
+  const _BookingsList({
+    required this.isUpcoming,
+    required this.bookingsStream,
+    required this.onCancel,
+  });
+
+  @override
+  State<_BookingsList> createState() => _BookingsListState();
+}
+
+class _BookingsListState extends State<_BookingsList>
+    with AutomaticKeepAliveClientMixin {
+  @override
+  bool get wantKeepAlive => true;
+
+  @override
+  Widget build(BuildContext context) {
+    super.build(context);
     return StreamBuilder<List<Map<String, dynamic>>>(
-      stream: _getBookingsStream(true),
+      stream: widget.bookingsStream,
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Center(child: CircularProgressIndicator());
@@ -300,11 +380,13 @@ class _MyBookingsScreenState extends State<MyBookingsScreen>
         final bookings = snapshot.data ?? [];
 
         if (bookings.isEmpty) {
-          return const Center(
+          return Center(
             child: Text(
-              'No upcoming\nappointment',
+              widget.isUpcoming
+                  ? 'No upcoming\nappointment'
+                  : 'No past\nbookings',
               textAlign: TextAlign.center,
-              style: TextStyle(
+              style: const TextStyle(
                 fontSize: 24,
                 fontWeight: FontWeight.bold,
                 color: Colors.black45,
@@ -318,53 +400,14 @@ class _MyBookingsScreenState extends State<MyBookingsScreen>
           itemCount: bookings.length,
           itemBuilder: (context, index) {
             final booking = bookings[index];
-            return _buildBookingCard(booking, isUpcoming: true);
+            return _buildBookingCard(context, booking);
           },
         );
       },
     );
   }
 
-  Widget _buildPastTab() {
-    return StreamBuilder<List<Map<String, dynamic>>>(
-      stream: _getBookingsStream(false),
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator());
-        }
-
-        final bookings = snapshot.data ?? [];
-
-        if (bookings.isEmpty) {
-          return const Center(
-            child: Text(
-              'No past\nbookings',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 24,
-                fontWeight: FontWeight.bold,
-                color: Colors.black45,
-              ),
-            ),
-          );
-        }
-
-        return ListView.builder(
-          padding: const EdgeInsets.all(20),
-          itemCount: bookings.length,
-          itemBuilder: (context, index) {
-            final booking = bookings[index];
-            return _buildBookingCard(booking, isUpcoming: false);
-          },
-        );
-      },
-    );
-  }
-
-  Widget _buildBookingCard(
-    Map<String, dynamic> booking, {
-    required bool isUpcoming,
-  }) {
+  Widget _buildBookingCard(BuildContext context, Map<String, dynamic> booking) {
     // Format date for display
     String displayDate = booking['date'];
     try {
@@ -418,9 +461,9 @@ class _MyBookingsScreenState extends State<MyBookingsScreen>
                   ),
                 ],
               ),
-              if (isUpcoming)
+              if (widget.isUpcoming)
                 InkWell(
-                  onTap: () => _showCancelDialog(booking['id']),
+                  onTap: () => widget.onCancel(booking['id']),
                   borderRadius: BorderRadius.circular(12),
                   child: Container(
                     padding: const EdgeInsets.symmetric(

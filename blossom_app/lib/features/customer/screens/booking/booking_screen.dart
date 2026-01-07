@@ -23,7 +23,7 @@ class _BookingScreenState extends State<BookingScreen> {
   final TextEditingController _requestController = TextEditingController();
   late List<DateTime> _dates;
   List<String> _selectedServices = [];
-  bool _dbConnected = false;
+  // bool _dbConnected = false;
   late DateTime _monthCursor; // first day of current month
   late DateTime _minMonth; // earliest month allowed
   late DateTime _maxMonth; // latest month allowed
@@ -49,13 +49,6 @@ class _BookingScreenState extends State<BookingScreen> {
     } catch (e) {
       debugPrint('Error going online: $e');
     }
-
-    FirebaseDatabase.instance.ref('.info/connected').onValue.listen((event) {
-      final val = event.snapshot.value;
-      setState(() {
-        _dbConnected = val == true;
-      });
-    });
   }
 
   List<DateTime> _generateDatesForMonth(DateTime monthStart) {
@@ -538,12 +531,54 @@ class _BookingScreenState extends State<BookingScreen> {
                               'EEEE, d MMMM',
                             ).format(selectedDate);
 
+                            // 1. Transaction to Prevent Double Booking
+                            final String safeTime = _selectedTimeSlot!
+                                .replaceAll('.', ':');
+                            final availabilityRef = FirebaseDatabase.instance
+                                .ref('availability/$formattedDate/$safeTime');
+
                             final DatabaseReference ref = FirebaseDatabase
                                 .instance
                                 .ref("bookings")
                                 .push();
+                            final String bookingId = ref.key!;
+
+                            try {
+                              final transactionResult = await availabilityRef
+                                  .runTransaction((Object? currentData) {
+                                    if (currentData == null) {
+                                      return Transaction.success(bookingId);
+                                    }
+                                    return Transaction.abort();
+                                  });
+
+                              if (!transactionResult.committed) {
+                                if (context.mounted) {
+                                  Navigator.pop(context); // Dismiss loading
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                      content: Text(
+                                        'This time slot is already booked. Please select another.',
+                                      ),
+                                      backgroundColor: Colors.red,
+                                    ),
+                                  );
+                                }
+                                return;
+                              }
+                            } catch (e) {
+                              debugPrint('Transaction failed: $e');
+                              if (context.mounted) {
+                                Navigator.pop(context);
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(content: Text('Booking failed: $e')),
+                                );
+                              }
+                              return;
+                            }
+
                             debugPrint(
-                              'Booking: attempting write key=${ref.key} uid=${user.uid}',
+                              'Booking: slot reserved, writing data key=$bookingId uid=${user.uid}',
                             );
 
                             final bookingData = {
@@ -560,14 +595,20 @@ class _BookingScreenState extends State<BookingScreen> {
 
                             // Perform write with mandatory await and timeout
                             // This ensures we verify connection by actually trying to write
-                            await ref
-                                .set(bookingData)
-                                .timeout(
-                                  const Duration(seconds: 5),
-                                  onTimeout: () {
-                                    throw Exception('Connection timeout');
-                                  },
-                                );
+                            try {
+                              await ref
+                                  .set(bookingData)
+                                  .timeout(
+                                    const Duration(seconds: 5),
+                                    onTimeout: () {
+                                      throw Exception('Connection timeout');
+                                    },
+                                  );
+                            } catch (e) {
+                              // Rollback availability if write fails
+                              await availabilityRef.remove();
+                              rethrow;
+                            }
 
                             debugPrint('Booking: write success key=${ref.key}');
 

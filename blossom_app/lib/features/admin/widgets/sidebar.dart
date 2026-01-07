@@ -19,12 +19,13 @@ class SideBar extends StatelessWidget {
         children: [
           const SizedBox(height: 40),
           // Logo Area
-          const Column(
+          Column(
             children: [
-              Icon(
-                Icons.local_florist_outlined,
-                size: 40,
-                color: Color(0xFF5D5343),
+              Image.asset(
+                'assets/images/logo.jpeg',
+                height: 80,
+                width: 80,
+                fit: BoxFit.contain,
               ),
               SizedBox(height: 8),
               Text(

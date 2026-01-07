@@ -9,6 +9,7 @@ class SignUpBasicInfoScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final TextEditingController nameController = TextEditingController();
     final TextEditingController emailController = TextEditingController();
+    final TextEditingController referralController = TextEditingController();
     final theme = Theme.of(context);
 
     return SignUpLayout(
@@ -49,6 +50,21 @@ class SignUpBasicInfoScreen extends StatelessWidget {
                 prefixIcon: Icon(Icons.email_outlined),
               ),
             ),
+            const SizedBox(height: 20),
+            Text(
+              'Referral Code (optional)',
+              style: theme.textTheme.titleSmall?.copyWith(
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 8),
+            TextField(
+              controller: referralController,
+              decoration: const InputDecoration(
+                hintText: 'ABC123',
+                prefixIcon: Icon(Icons.card_giftcard_outlined),
+              ),
+            ),
             const SizedBox(height: 30),
             SizedBox(
               width: double.infinity,
@@ -61,6 +77,7 @@ class SignUpBasicInfoScreen extends StatelessWidget {
                       builder: (context) => SignUpPasswordScreen(
                         email: emailController.text.trim(),
                         name: nameController.text.trim(),
+                        referralCode: referralController.text.trim(),
                       ),
                     ),
                   );

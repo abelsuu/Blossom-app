@@ -34,6 +34,88 @@ class UserService {
     });
   }
 
+  /// Stream for User Wallet (Vouchers, Bundles)
+  static Stream<List<Map<String, dynamic>>> getWalletStream(String uid) {
+    final query = _dbRef.child('users/$uid/wallet');
+    if (!kIsWeb) {
+      query.keepSynced(true);
+    }
+    return query.onValue.map((event) {
+      final data = event.snapshot.value;
+      if (data == null) return [];
+
+      final Map<dynamic, dynamic> walletMap = data as Map<dynamic, dynamic>;
+      final List<Map<String, dynamic>> items = [];
+
+      walletMap.forEach((key, value) {
+        items.add({'id': key, ...Map<String, dynamic>.from(value as Map)});
+      });
+
+      // Sort by expiry (soonest first)
+      items.sort((a, b) {
+        final tA = a['expiryDate'] as String? ?? '9999-12-31';
+        final tB = b['expiryDate'] as String? ?? '9999-12-31';
+        return tA.compareTo(tB);
+      });
+
+      return items;
+    });
+  }
+
+  /// Redeem a Reward
+  static Future<void> redeemReward(
+    String uid,
+    Map<String, dynamic> reward,
+  ) async {
+    final int cost = reward['cost'];
+    final userLoyaltyRef = _dbRef.child('users/$uid/loyalty');
+
+    // Transaction to deduct points
+    final transactionResult = await userLoyaltyRef.runTransaction((
+      Object? currentData,
+    ) {
+      if (currentData == null) {
+        return Transaction.abort();
+      }
+      final Map<String, dynamic> data = Map<String, dynamic>.from(
+        currentData as Map,
+      );
+      final int currentPoints = data['points'] as int? ?? 0;
+
+      if (currentPoints < cost) {
+        return Transaction.abort();
+      }
+
+      data['points'] = currentPoints - cost;
+      return Transaction.success(data);
+    });
+
+    if (transactionResult.committed) {
+      // Add to Wallet
+      await _dbRef.child('users/$uid/wallet').push().set({
+        'title': reward['title'],
+        'description': reward['description'],
+        'type': 'voucher', // or bundle/gift_card
+        'value': reward['value'] ?? 0,
+        'redeemedAt': ServerValue.timestamp,
+        'expiryDate': DateTime.now()
+            .add(const Duration(days: 90))
+            .toIso8601String(), // 90 days validity
+        'status': 'active',
+      });
+
+      // Log History
+      await _dbRef.child('users/$uid/loyalty/history').push().set({
+        'type': 'redeemed',
+        'amount': cost,
+        'date': ServerValue.timestamp,
+        'description': 'Redeemed: ${reward['title']}',
+      });
+    } else {
+      throw Exception('Insufficient points or transaction failed');
+    }
+  }
+
   /// Stream for Loyalty History
   static Stream<List<Map<String, dynamic>>> getLoyaltyHistoryStream(
     String uid,
@@ -418,17 +500,15 @@ class UserService {
     }
   }
 
-  /// Helper to deeply convert Map<dynamic, dynamic> to Map<String, dynamic>
+  /// Helper to deeply convert `Map<dynamic, dynamic>` to `Map<String, dynamic>`
   static Map<String, dynamic> _deepMapConvert(Map<dynamic, dynamic> map) {
     final converted = <String, dynamic>{};
     map.forEach((key, value) {
       if (value is Map) {
-        converted[key.toString()] = _deepMapConvert(
-          value as Map<dynamic, dynamic>,
-        );
+        converted[key.toString()] = _deepMapConvert(value);
       } else if (value is List) {
         converted[key.toString()] = value.map((e) {
-          if (e is Map) return _deepMapConvert(e as Map<dynamic, dynamic>);
+          if (e is Map) return _deepMapConvert(e);
           return e;
         }).toList();
       } else {
@@ -456,9 +536,7 @@ class UserService {
 
       map.forEach((key, value) {
         if (value is Map) {
-          final convertedValue = _deepMapConvert(
-            value as Map<dynamic, dynamic>,
-          );
+          final convertedValue = _deepMapConvert(value);
           history.add({'id': key, ...convertedValue});
         }
       });

@@ -1,4 +1,5 @@
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_database/firebase_database.dart';
 import 'package:flutter/material.dart';
 import 'package:blossom_app/features/customer/screens/booking/booking_screen.dart';
 import 'package:blossom_app/features/customer/screens/ai_skin_analysis/ai_skin_analysis_screen.dart'
@@ -29,7 +30,7 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
   @override
   void initState() {
     super.initState();
-   
+
     FirebaseAuth.instance.authStateChanges().listen((user) {
       if (user != null) {
         debugPrint('User authenticated: ${user.uid}. Checking catalog data...');
@@ -128,6 +129,13 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
           const SizedBox(height: 15),
           _buildPromoBanner(),
           const SizedBox(height: 30),
+          const Text(
+            'Recommended for You',
+            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 15),
+          _buildRecommendations(),
+          const SizedBox(height: 30),
 
           // 5. Catalog
           const Text(
@@ -206,9 +214,18 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
     return StreamBuilder<Map<String, dynamic>>(
       stream: UserService.getLoyaltyStream(user.uid),
       builder: (context, snapshot) {
-        final data = snapshot.data ?? {'points': 0, 'vouchers': 0};
+        final data =
+            snapshot.data ?? {'points': 0, 'vouchers': 0, 'tier': 'Bronze'};
         final points = data['points'] ?? 0;
         final vouchers = data['vouchers'] ?? 0;
+        final tier = (() {
+          if (data['tier'] is String && (data['tier'] as String).isNotEmpty) {
+            return data['tier'];
+          }
+          if (points >= 150) return 'Gold';
+          if (points >= 50) return 'Silver';
+          return 'Bronze';
+        })();
 
         return GestureDetector(
           onTap: () {
@@ -255,10 +272,7 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
                           ),
                         ),
                         SizedBox(height: 4),
-                        Text(
-                          'Gold Member',
-                          style: TextStyle(color: Colors.white70, fontSize: 14),
-                        ),
+                        // Dynamic tier label
                       ],
                     ),
                     Container(
@@ -287,6 +301,11 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
                     ),
                     _buildLoyaltyStat(vouchers.toString(), 'Vouchers'),
                   ],
+                ),
+                const SizedBox(height: 10),
+                Text(
+                  '$tier Member',
+                  style: const TextStyle(color: Colors.white70, fontSize: 14),
                 ),
               ],
             ),
@@ -708,11 +727,11 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
             ),
           ),
           Positioned(
-            right: -20,
-            bottom: -20,
+            right: -10,
+            bottom: -10,
             child: Container(
-              width: 140,
-              height: 140,
+              width: 80,
+              height: 80,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 image: DecorationImage(
@@ -815,6 +834,120 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
             ),
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildRecommendations() {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return const SizedBox.shrink();
+    return SizedBox(
+      height: 120,
+      child: StreamBuilder<DatabaseEvent>(
+        stream: FirebaseDatabase.instance.ref('bookings').onValue,
+        builder: (context, snapshot) {
+          final data = snapshot.data?.snapshot.value;
+          if (data == null) return const SizedBox.shrink();
+          final Map<dynamic, dynamic> map = data as Map<dynamic, dynamic>;
+          final Map<String, int> counts = {};
+          map.forEach((key, value) {
+            final b = Map<String, dynamic>.from(value as Map);
+            if (b['userId'] == user.uid) {
+              if (b['services'] is List) {
+                for (final s in (b['services'] as List)) {
+                  if (s is String && s.isNotEmpty) {
+                    counts[s] = (counts[s] ?? 0) + 1;
+                  }
+                }
+              } else if (b['request'] is String) {
+                final s = b['request'] as String;
+                if (s.isNotEmpty) counts[s] = (counts[s] ?? 0) + 1;
+              }
+            }
+          });
+          final items = counts.entries.toList()
+            ..sort((a, b) => b.value.compareTo(a.value));
+          final top = items.take(6).map((e) => e.key).toList();
+          if (top.isEmpty) {
+            return const Text('No recommendations yet');
+          }
+          return ListView.separated(
+            scrollDirection: Axis.horizontal,
+            itemCount: top.length,
+            separatorBuilder: (context, index) => const SizedBox(width: 12),
+            itemBuilder: (context, index) {
+              final name = top[index];
+              final cat = (() {
+                final n = name.toLowerCase();
+                if (n.contains('facial')) {
+                  return 'Facials';
+                }
+                if (n.contains('manicure') ||
+                    n.contains('pedicure') ||
+                    n.contains('polish') ||
+                    n.contains('nail')) {
+                  return 'Beauty';
+                }
+                return 'Body';
+              })();
+              return GestureDetector(
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => ServiceCatalogScreen(category: cat),
+                    ),
+                  );
+                },
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 12,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(16),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.05),
+                        blurRadius: 10,
+                        offset: const Offset(0, 5),
+                      ),
+                    ],
+                    border: Border.all(
+                      color: Colors.brown.withValues(alpha: 0.1),
+                    ),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Based on your bookings',
+                        style: TextStyle(fontSize: 10, color: Colors.grey),
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        name,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFF4E342E),
+                        ),
+                      ),
+                      const Spacer(),
+                      Row(
+                        children: [
+                          const Icon(Icons.arrow_forward_ios_rounded, size: 12),
+                          const SizedBox(width: 4),
+                          const Text('View', style: TextStyle(fontSize: 12)),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            },
+          );
+        },
       ),
     );
   }

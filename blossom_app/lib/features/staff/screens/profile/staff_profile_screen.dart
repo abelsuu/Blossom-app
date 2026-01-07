@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:blossom_app/features/staff/services/staff_service.dart';
 import 'package:blossom_app/features/onboarding/screens/onboarding_screen.dart';
+import 'package:blossom_app/features/staff/screens/schedule/staff_schedule_screen.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:convert';
 import 'dart:typed_data';
@@ -460,7 +461,75 @@ class _StaffProfileScreenState extends State<StaffProfileScreen> {
                   ),
                   const SizedBox(height: 20),
 
-                  // 4. Security Card
+                  // 4. My Schedule Card
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(20),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFC5C0A0), // Olive/Khaki tone
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFD4AF37), // Gold
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: const Icon(
+                                Icons.calendar_month,
+                                color: Colors.white,
+                              ),
+                            ),
+                            const SizedBox(width: 15),
+                            const Text(
+                              'My Schedule',
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 20),
+                        SizedBox(
+                          width: double.infinity,
+                          child: ElevatedButton(
+                            onPressed: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) =>
+                                      const StaffScheduleScreen(),
+                                ),
+                              );
+                            },
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFF5D5343),
+                              padding: const EdgeInsets.symmetric(vertical: 15),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                            ),
+                            child: const Text(
+                              'Manage Shifts & Time Off',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+
+                  // 5. Security Card
                   Container(
                     width: double.infinity,
                     padding: const EdgeInsets.all(20),

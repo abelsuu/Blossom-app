@@ -1,4 +1,5 @@
 // This file is only compiled on Web via conditional import.
+// ignore_for_file: avoid_web_libraries_in_flutter, deprecated_member_use
 import 'dart:html' as html;
 import 'dart:ui_web' as ui_web;
 import 'package:flutter/material.dart';

@@ -142,6 +142,10 @@ class MyApp extends StatelessWidget {
           ),
         ),
       ),
+      routes: {
+        '/admin': (context) => const AdminAuthScreen(),
+        '/onboarding': (context) => const OnboardingScreen(),
+      },
       home: kForceOnboarding
           ? const OnboardingScreen()
           : Builder(

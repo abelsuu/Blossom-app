@@ -1,3 +1,4 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_database/firebase_database.dart';
 import 'package:flutter/foundation.dart';
 import 'package:intl/intl.dart';
@@ -54,12 +55,125 @@ class StaffService {
     String newStatus,
   ) async {
     final bookingRef = _dbRef.child('bookings/$bookingId');
-    await bookingRef.update({'status': newStatus.toLowerCase()});
+
+    // Normalize status to ensure consistency
+    String normalizedStatus = newStatus.toLowerCase();
+    if (normalizedStatus == 'complete') normalizedStatus = 'completed';
+    if (normalizedStatus == 'confirm') normalizedStatus = 'confirmed';
+    if (normalizedStatus == 'cancel') normalizedStatus = 'cancelled';
+
+    final Map<String, dynamic> updates = {'status': normalizedStatus};
+
+    // If confirming, record the staff member AND send notification
+    if (normalizedStatus == 'confirmed') {
+      try {
+        final user = FirebaseAuth.instance.currentUser;
+        if (user != null) {
+          final staffSnapshot = await _dbRef.child('staffs/${user.uid}').get();
+          if (staffSnapshot.exists) {
+            final staffData = Map<String, dynamic>.from(
+              staffSnapshot.value as Map,
+            );
+            final staffName = staffData['name'] ?? 'Unknown Staff';
+            updates['staff'] = staffName;
+            updates['confirmedBy'] = staffName; // Added for Admin visibility
+          }
+        }
+
+        // Send Notification
+        final snapshot = await bookingRef.get();
+        if (snapshot.exists) {
+          final booking = Map<String, dynamic>.from(snapshot.value as Map);
+          final uid = booking['userId'];
+          if (uid != null) {
+            String friendlyDate = booking['date']?.toString() ?? '';
+            try {
+              final parsed = DateFormat('yyyy-MM-dd').parse(friendlyDate);
+              friendlyDate = DateFormat('EEEE, d MMMM').format(parsed);
+            } catch (_) {}
+            final friendlyTime = booking['time']?.toString() ?? '';
+
+            await _dbRef.child('notifications/$uid').push().set({
+              'message':
+                  'Your appointment on $friendlyDate at $friendlyTime has been confirmed!',
+              'timestamp': ServerValue.timestamp,
+              'type': 'booking_confirmed',
+              'bookingId': bookingId,
+              'date': booking['date'],
+              'time': booking['time'],
+            });
+          }
+        }
+      } catch (e) {
+        debugPrint('Error handling confirmation: $e');
+      }
+    }
+
+    // If cancelled, record who cancelled it
+    if (normalizedStatus == 'cancelled') {
+      updates['cancelledBy'] = 'staff';
+      updates['cancellationReason'] = 'Cancelled by staff';
+    }
+
+    await bookingRef.update(updates);
+
+    // If cancelled, send notification to User AND free up availability
+    if (normalizedStatus == 'cancelled') {
+      try {
+        final snapshot = await bookingRef.get();
+        if (snapshot.exists) {
+          final booking = Map<String, dynamic>.from(snapshot.value as Map);
+
+          // Free availability
+          final date = booking['date'];
+          final time = booking['time'];
+          if (date != null && time != null) {
+            final safeTime = time.toString().replaceAll('.', ':');
+            await _dbRef.child('availability/$date/$safeTime').remove();
+          }
+
+          final uid = booking['userId'];
+          if (uid != null) {
+            String friendlyDate = booking['date']?.toString() ?? '';
+            try {
+              final parsed = DateFormat('yyyy-MM-dd').parse(friendlyDate);
+              friendlyDate = DateFormat('EEEE, d MMMM').format(parsed);
+            } catch (_) {}
+            final friendlyTime = booking['time']?.toString() ?? '';
+
+            await _dbRef.child('notifications/$uid').push().set({
+              'message':
+                  'Your appointment on $friendlyDate at $friendlyTime has been cancelled.',
+              'timestamp': ServerValue.timestamp,
+              'type': 'booking_cancelled',
+              'bookingId': bookingId,
+              'date': booking['date'],
+              'time': booking['time'],
+            });
+          }
+        }
+      } catch (e) {
+        debugPrint('Error sending cancellation notification: $e');
+      }
+    }
 
     // Award loyalty points if completed and not already awarded
     // User Requirement: Trigger only on "Complete" (which matches 'completed' in our enum/dropdown)
-    if (newStatus.toLowerCase() == 'completed') {
+    if (normalizedStatus == 'completed') {
       try {
+        // Record who completed it
+        final user = FirebaseAuth.instance.currentUser;
+        if (user != null) {
+          final staffSnapshot = await _dbRef.child('staffs/${user.uid}').get();
+          if (staffSnapshot.exists) {
+            final staffData = Map<String, dynamic>.from(
+              staffSnapshot.value as Map,
+            );
+            final staffName = staffData['name'] ?? 'Unknown Staff';
+            updates['completedBy'] = staffName; // Added for Admin visibility
+          }
+        }
+
         final snapshot = await bookingRef.get();
         if (snapshot.exists) {
           final booking = Map<String, dynamic>.from(snapshot.value as Map);
@@ -80,8 +194,10 @@ class StaffService {
                   // This is likely a category (e.g., "Body") containing services
                   value.forEach((serviceKey, serviceData) {
                     if (serviceData is Map) {
-                      final title = serviceData['title']?.toString() ?? 
-                                  serviceData['name']?.toString() ?? '';
+                      final title =
+                          serviceData['title']?.toString() ??
+                          serviceData['name']?.toString() ??
+                          '';
                       final priceStr = serviceData['price']?.toString() ?? '0';
                       // Parse "Rm 130.00" -> 130.0 or "130" -> 130.0
                       final price =
@@ -166,11 +282,15 @@ class StaffService {
                 final loyaltyRef = _dbRef.child('users/$userId/loyalty');
                 final loyaltySnapshot = await loyaltyRef.get();
                 int currentPoints = 0;
+                String currentTier = 'Bronze';
+                int currentVouchers = 0;
                 if (loyaltySnapshot.exists) {
                   final loyaltyData = Map<String, dynamic>.from(
                     loyaltySnapshot.value as Map,
                   );
                   currentPoints = loyaltyData['points'] as int? ?? 0;
+                  currentTier = (loyaltyData['tier'] as String?) ?? 'Bronze';
+                  currentVouchers = loyaltyData['vouchers'] as int? ?? 0;
                 }
 
                 // Update points
@@ -190,6 +310,27 @@ class StaffService {
 
                 // Mark booking as points awarded
                 await bookingRef.update({'pointsAwarded': true});
+
+                final newPoints = currentPoints + pointsToAward;
+                String newTier;
+                if (newPoints >= 150) {
+                  newTier = 'Gold';
+                } else if (newPoints >= 50) {
+                  newTier = 'Silver';
+                } else {
+                  newTier = 'Bronze';
+                }
+                if (newTier != currentTier) {
+                  await loyaltyRef.update({'tier': newTier});
+                  await loyaltyRef.update({'vouchers': currentVouchers + 1});
+                  final h2 = loyaltyRef.child('history').push();
+                  await h2.set({
+                    'type': 'earned',
+                    'amount': 1,
+                    'date': ServerValue.timestamp,
+                    'description': 'Tier upgrade voucher',
+                  });
+                }
               }
             }
           }

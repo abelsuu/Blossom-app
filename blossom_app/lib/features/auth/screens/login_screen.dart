@@ -26,17 +26,12 @@ class LoginScreen extends StatelessWidget {
               const SizedBox(height: 20),
               // Logo or Decorative Element
               Center(
-                child: Container(
-                  height: 80,
-                  width: 80,
-                  decoration: BoxDecoration(
-                    color: theme.colorScheme.primary.withValues(alpha: 0.2),
-                    shape: BoxShape.circle,
-                  ),
-                  child: Icon(
-                    Icons.spa,
-                    size: 40,
-                    color: theme.colorScheme.primary,
+                child: ClipOval(
+                  child: Image.asset(
+                    'assets/images/logo.jpeg',
+                    width: 150,
+                    height: 150,
+                    fit: BoxFit.cover,
                   ),
                 ),
               ),
@@ -156,7 +151,8 @@ class LoginScreen extends StatelessWidget {
 
                     try {
                       // Check for admin email before attempting login
-                      if (email.startsWith('admin') || email.startsWith('ad.blossom')) {
+                      if (email.startsWith('admin') ||
+                          email.startsWith('ad.blossom')) {
                         ScaffoldMessenger.of(context).showSnackBar(
                           const SnackBar(
                             content: Text(

@@ -40,6 +40,7 @@ class _AiSkinAnalysisScreenState extends State<AiSkinAnalysisScreen> {
     }
   }
 
+  // ignore: unused_element
   Future<void> _resetLimitForTesting() async {
     final user = FirebaseAuth.instance.currentUser;
     if (user != null) {

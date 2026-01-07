@@ -9,7 +9,7 @@ class SpecialOfferDetailsScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+    // final theme = Theme.of(context);
     final color = Color(promo['color'] ?? 0xFFFFF8E1);
     final textColor = Color(promo['textColor'] ?? 0xFF000000);
     final pillColor = Color(promo['pillColor'] ?? 0x99FFFFFF);
@@ -183,9 +183,13 @@ class SpecialOfferDetailsScreen extends StatelessWidget {
                     ),
                     child: Row(
                       children: [
-                        const Icon(
-                          Icons.spa_outlined,
-                          color: Color(0xFF5D5343),
+                        ClipOval(
+                          child: Image.asset(
+                            'assets/images/logo.jpeg',
+                            width: 24,
+                            height: 24,
+                            fit: BoxFit.cover,
+                          ),
                         ),
                         const SizedBox(width: 12),
                         Expanded(
@@ -228,9 +232,8 @@ class SpecialOfferDetailsScreen extends StatelessWidget {
               Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder: (context) => BookingScreen(
-                    initialService: applicableTreatments,
-                  ),
+                  builder: (context) =>
+                      BookingScreen(initialService: applicableTreatments),
                 ),
               );
             },

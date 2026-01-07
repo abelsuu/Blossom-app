@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_database/firebase_database.dart';
+import 'package:intl/intl.dart';
 import 'add_staff_screen.dart';
 
 class StaffScreen extends StatefulWidget {
@@ -226,6 +227,20 @@ class _StaffScreenState extends State<StaffScreen> {
                                     .trim()
                                     .toLowerCase();
                                 if (email.startsWith('staff')) {
+                                  // Sync name from Users node if available (fix for name update issue)
+                                  if (usersData is Map &&
+                                      usersData.containsKey(key)) {
+                                    final u = usersData[key];
+                                    if (u is Map && u['profile'] is Map) {
+                                      final p = u['profile'] as Map;
+                                      final uName = (p['name'] ?? '')
+                                          .toString();
+                                      if (uName.isNotEmpty) {
+                                        m['name'] = uName;
+                                      }
+                                    }
+                                  }
+
                                   finalStaffList.add(m);
                                   finalKeys.add(key.toString());
                                   existingEmails.add(email);
@@ -346,6 +361,8 @@ class _StaffScreenState extends State<StaffScreen> {
         return Colors.green;
       case 'on leave':
         return Colors.amber;
+      case 'leave req':
+        return Colors.orange;
       case 'resigned':
         return Colors.red;
       default:
@@ -395,10 +412,33 @@ class _StaffScreenState extends State<StaffScreen> {
   Widget _buildStaffRow(String docId, Map<String, dynamic> staffData) {
     final name = staffData['name'] ?? 'Unknown';
     final role = staffData['role'] ?? '-';
-    final status = staffData['status'] ?? 'Active';
+    var status = staffData['status'] ?? 'Active';
     final contact = staffData['contact'] ?? '-';
-    final statusColor = _getStatusColor(status);
     final isVirtual = staffData['isVirtual'] == true;
+
+    // Check Time Off Status
+    if (!isVirtual && status == 'Active') {
+      final timeOff = staffData['time_off'] as Map?;
+      if (timeOff != null) {
+        final today = DateFormat('yyyy-MM-dd').format(DateTime.now());
+        bool onLeave = false;
+        bool leaveReq = false;
+        timeOff.forEach((key, value) {
+          final t = Map<String, dynamic>.from(value as Map);
+          if (t['date'] == today) {
+            if (t['status'] == 'approved') onLeave = true;
+            if (t['status'] == 'pending') leaveReq = true;
+          }
+        });
+        if (onLeave) {
+          status = 'On Leave';
+        } else if (leaveReq) {
+          status = 'Leave Req';
+        }
+      }
+    }
+
+    final statusColor = _getStatusColor(status);
 
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 12.0, horizontal: 16),

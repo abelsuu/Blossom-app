@@ -7,11 +7,13 @@ import 'package:blossom_app/features/customer/screens/signup/signup_email_verifi
 class SignUpPasswordScreen extends StatelessWidget {
   final String email;
   final String name;
+  final String? referralCode;
 
   const SignUpPasswordScreen({
     super.key,
     required this.email,
     required this.name,
+    this.referralCode,
   });
 
   @override
@@ -135,6 +137,76 @@ class SignUpPasswordScreen extends StatelessWidget {
                             : '',
                         "createdAt": ServerValue.timestamp,
                       });
+                      final code = uid.substring(0, 6).toUpperCase();
+                      await ref.update({"referralCode": code});
+                      await FirebaseDatabase.instance
+                          .ref("referral_codes/$code")
+                          .set({"ownerUid": uid});
+                      final provided = referralCode?.trim();
+                      if (provided != null && provided.isNotEmpty) {
+                        final rcSnap = await FirebaseDatabase.instance
+                            .ref("referral_codes/$provided")
+                            .get();
+                        if (rcSnap.exists) {
+                          final data = Map<String, dynamic>.from(
+                            rcSnap.value as Map,
+                          );
+                          final ownerUid = data["ownerUid"];
+                          if (ownerUid != null && ownerUid != uid) {
+                            final referrerLoyalty =
+                                FirebaseDatabase.instance
+                                    .ref("users/$ownerUid/loyalty");
+                            final refereeLoyalty =
+                                FirebaseDatabase.instance
+                                    .ref("users/$uid/loyalty");
+                            final referrerSnap = await referrerLoyalty.get();
+                            final refereeSnap = await refereeLoyalty.get();
+                            int refPoints = 0;
+                            int rePoints = 0;
+                            if (referrerSnap.exists) {
+                              final m = Map<String, dynamic>.from(
+                                  referrerSnap.value as Map);
+                              refPoints = m["points"] as int? ?? 0;
+                            }
+                            if (refereeSnap.exists) {
+                              final m = Map<String, dynamic>.from(
+                                  refereeSnap.value as Map);
+                              rePoints = m["points"] as int? ?? 0;
+                            }
+                            await referrerLoyalty.update(
+                              {"points": refPoints + 10},
+                            );
+                            await refereeLoyalty.update({"points": rePoints + 5});
+                            await FirebaseDatabase.instance
+                                .ref("users/$ownerUid/loyalty/history")
+                                .push()
+                                .set({
+                              "type": "earned",
+                              "amount": 10,
+                              "date": ServerValue.timestamp,
+                              "description": "Referral reward",
+                              "refereeUid": uid
+                            });
+                            await FirebaseDatabase.instance
+                                .ref("users/$uid/loyalty/history")
+                                .push()
+                                .set({
+                              "type": "earned",
+                              "amount": 5,
+                              "date": ServerValue.timestamp,
+                              "description": "Referral join reward",
+                              "referrerUid": ownerUid
+                            });
+                            await FirebaseDatabase.instance
+                                .ref("referrals/redemptions/$uid")
+                                .set({
+                              "code": provided,
+                              "referrerUid": ownerUid,
+                              "timestamp": ServerValue.timestamp
+                            });
+                          }
+                        }
+                      }
                     }
 
                     // Send verification email

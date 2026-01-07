@@ -218,10 +218,13 @@ class _ProfileQuestionnaireScreenState
     required Function(String?) onChanged,
     required IconData icon,
   }) {
+    // Ensure value is in items, otherwise null
+    final validValue = items.contains(value) ? value : null;
+
     return Padding(
       padding: const EdgeInsets.only(bottom: 24),
       child: DropdownButtonFormField<String>(
-        initialValue: value,
+        initialValue: validValue,
         decoration: InputDecoration(
           labelText: label,
           prefixIcon: Icon(icon),

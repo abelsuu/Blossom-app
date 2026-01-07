@@ -1,8 +1,6 @@
 import 'package:blossom_app/features/customer/services/promotions_service.dart';
 import 'package:flutter/material.dart';
-import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
-import 'dart:typed_data';
 
 class MarketingScreen extends StatefulWidget {
   const MarketingScreen({super.key});

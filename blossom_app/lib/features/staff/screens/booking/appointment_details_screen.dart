@@ -21,8 +21,6 @@ class AppointmentDetailsScreen extends StatefulWidget {
 
 class _AppointmentDetailsScreenState extends State<AppointmentDetailsScreen> {
   late TextEditingController _noteController;
-  late String _currentStatus;
-  List<String> _selectedServices = [];
 
   final List<String> _hardcodedServices = [
     'Body Massage',
@@ -40,25 +38,8 @@ class _AppointmentDetailsScreenState extends State<AppointmentDetailsScreen> {
   @override
   void initState() {
     super.initState();
-    _currentStatus = _normalizeStatus(widget.booking['status'] ?? 'pending');
-
-    // Initialize services
-    final List<dynamic>? services =
-        widget.booking['services'] as List<dynamic>?;
-
-    if (services != null && services.isNotEmpty) {
-      for (final s in services) {
-        if (s is String) {
-          _selectedServices.add(s);
-        }
-      }
-    } else {
-      // Fallback to legacy single service fields
-      final service = widget.booking['request'] ?? widget.booking['service'];
-      if (service is String && service.isNotEmpty) {
-        _selectedServices.add(service);
-      }
-    }
+    _noteController = TextEditingController();
+    // No local state initialization needed for stream-based data
   }
 
   String _normalizeStatus(String status) {
@@ -85,26 +66,12 @@ class _AppointmentDetailsScreenState extends State<AppointmentDetailsScreen> {
 
   Future<void> _updateStatus(String? newValue) async {
     if (newValue == null) return;
-    setState(() {
-      _currentStatus = newValue;
-    });
+    // Optimistic update isn't strictly needed with Stream, but we can just await
     await StaffService.updateBookingStatus(widget.booking['id'], newValue);
     if (mounted) {
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text('Status updated to $newValue')));
-    }
-  }
-
-  Future<void> _saveServices() async {
-    await StaffService.updateBookingServices(
-      widget.booking['id'],
-      _selectedServices,
-    );
-    if (mounted) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Services updated')));
     }
   }
 
@@ -147,21 +114,6 @@ class _AppointmentDetailsScreenState extends State<AppointmentDetailsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final dateStr = widget.booking['date'] ?? '';
-    final timeStr = widget.booking['time'] ?? '';
-
-    // Parse date for display
-    String day = '';
-    String monthYear = '';
-    try {
-      final date = DateFormat('yyyy-MM-dd').parse(dateStr);
-      day = DateFormat('d').format(date);
-      monthYear = DateFormat('MMM, yyyy').format(date);
-    } catch (e) {
-      day = dateStr.split('-').last;
-      monthYear = dateStr;
-    }
-
     return Scaffold(
       backgroundColor: const Color(0xFFFFF8E1), // Beige background
       appBar: AppBar(
@@ -176,445 +128,559 @@ class _AppointmentDetailsScreenState extends State<AppointmentDetailsScreen> {
           style: TextStyle(color: Colors.black),
         ),
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.symmetric(horizontal: 20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Header Card
-            Container(
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(20),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.05),
-                    blurRadius: 10,
-                    offset: const Offset(0, 5),
-                  ),
-                ],
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        'Appointment',
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.black54,
-                        ),
-                      ),
-                      const SizedBox(height: 5),
-                      Row(
-                        children: [
-                          const Icon(
-                            Icons.access_time,
-                            size: 14,
-                            color: Colors.black,
-                          ),
-                          const SizedBox(width: 5),
-                          Text(
-                            timeStr,
-                            style: const TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ],
+      body: StreamBuilder<DatabaseEvent>(
+        stream: FirebaseDatabase.instance
+            .ref('bookings/${widget.booking['id']}')
+            .onValue,
+        builder: (context, bookingSnapshot) {
+          Map<String, dynamic> bookingData;
+          if (bookingSnapshot.hasData &&
+              bookingSnapshot.data!.snapshot.value != null) {
+            bookingData = Map<String, dynamic>.from(
+              bookingSnapshot.data!.snapshot.value as Map,
+            );
+            bookingData['id'] = widget.booking['id'];
+          } else {
+            bookingData = widget.booking;
+          }
+
+          final status = _normalizeStatus(bookingData['status'] ?? 'pending');
+          final dateStr = bookingData['date'] ?? '';
+          final timeStr = bookingData['time'] ?? '';
+
+          // Parse date for display
+          String day = '';
+          String monthYear = '';
+          try {
+            final date = DateFormat('yyyy-MM-dd').parse(dateStr);
+            day = DateFormat('d').format(date);
+            monthYear = DateFormat('MMM, yyyy').format(date);
+          } catch (e) {
+            day = dateStr.split('-').last;
+            monthYear = dateStr;
+          }
+
+          // Parse Services from Stream Data
+          List<String> currentServices = [];
+          final List<dynamic>? servicesList =
+              bookingData['services'] as List<dynamic>?;
+          if (servicesList != null && servicesList.isNotEmpty) {
+            for (final s in servicesList) {
+              if (s is String) currentServices.add(s);
+            }
+          } else {
+            final service = bookingData['request'] ?? bookingData['service'];
+            if (service is String && service.isNotEmpty) {
+              currentServices.add(service);
+            }
+          }
+
+          return SingleChildScrollView(
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Header Card
+                Container(
+                  padding: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(20),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.05),
+                        blurRadius: 10,
+                        offset: const Offset(0, 5),
                       ),
                     ],
                   ),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 8,
-                    ),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFD4AF37), // Gold/Mustard
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: Column(
-                      children: [
-                        Text(
-                          day,
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 24,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        Text(
-                          monthYear,
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 10,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 30),
-
-            // Customer Info
-            StreamBuilder<DatabaseEvent>(
-              stream: FirebaseDatabase.instance
-                  .ref('users/${widget.booking['userId']}')
-                  .onValue,
-              builder: (context, snapshot) {
-                final rootData =
-                    snapshot.data?.snapshot.value as Map<dynamic, dynamic>?;
-                final profile = rootData?['profile'] as Map<dynamic, dynamic>?;
-
-                final name = (() {
-                  final fn = profile?['firstName']?.toString() ?? '';
-                  final ln = profile?['lastName']?.toString() ?? '';
-                  final full = [fn, ln].where((s) => s.isNotEmpty).join(' ');
-                  if (full.isNotEmpty) return full;
-                  return (rootData?['name']?.toString() ??
-                      widget.booking['userName']?.toString() ??
-                      'Unknown Customer');
-                })();
-
-                final phone =
-                    (profile?['phone']?.toString() ??
-                    rootData?['phone']?.toString() ??
-                    '');
-                final email =
-                    (rootData?['email']?.toString() ??
-                    profile?['email']?.toString() ??
-                    '');
-
-                // Decode profile picture
-                final photoBase64 = profile?['photoBase64']?.toString();
-                Uint8List? photoBytes;
-                if (photoBase64 != null && photoBase64.isNotEmpty) {
-                  try {
-                    photoBytes = base64Decode(photoBase64);
-                  } catch (_) {
-                    photoBytes = null;
-                  }
-                }
-
-                return Row(
-                  children: [
-                    CircleAvatar(
-                      radius: 30,
-                      backgroundImage: photoBytes != null
-                          ? MemoryImage(photoBytes)
-                          : NetworkImage(_customerImage) as ImageProvider,
-                    ),
-                    const SizedBox(width: 15),
-                    Expanded(
-                      child: Column(
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(
-                            name,
-                            style: const TextStyle(
+                          const Text(
+                            'Appointment',
+                            style: TextStyle(
                               fontSize: 18,
                               fontWeight: FontWeight.bold,
+                              color: Colors.black54,
                             ),
                           ),
-                          if (phone.isNotEmpty)
-                            Text(
-                              'Phone: $phone',
-                              style: const TextStyle(color: Colors.black54),
-                            ),
-                          if (email.isNotEmpty)
-                            Text(
-                              'Email: $email',
-                              style: const TextStyle(color: Colors.black54),
-                            ),
-                          const SizedBox(height: 8),
+                          const SizedBox(height: 5),
                           Row(
                             children: [
-                              if (phone.isNotEmpty)
-                                ElevatedButton(
-                                  onPressed: () {
-                                    launchUrlString('tel:$phone');
-                                  },
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: const Color(0xFFD4AF37),
-                                    foregroundColor: Colors.white,
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 14,
-                                      vertical: 10,
-                                    ),
-                                  ),
-                                  child: const Text('Call Customer'),
+                              const Icon(
+                                Icons.access_time,
+                                size: 14,
+                                color: Colors.black,
+                              ),
+                              const SizedBox(width: 5),
+                              Text(
+                                timeStr,
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.bold,
                                 ),
-                              const SizedBox(width: 10),
-                              if (email.isNotEmpty)
-                                ElevatedButton(
-                                  onPressed: () {
-                                    final subject = Uri.encodeComponent(
-                                      'Booking Confirmation',
-                                    );
-                                    final body = Uri.encodeComponent(
-                                      'Dear $name,\n\nYour booking has been confirmed.\n\nBest regards,\nBlossom',
-                                    );
-                                    launchUrlString(
-                                      'mailto:$email?subject=$subject&body=$body',
-                                    );
-                                  },
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: const Color(0xFF5D5343),
-                                    foregroundColor: Colors.white,
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 14,
-                                      vertical: 10,
-                                    ),
-                                  ),
-                                  child: const Text('Email Customer'),
-                                ),
+                              ),
                             ],
                           ),
                         ],
                       ),
-                    ),
-                  ],
-                );
-              },
-            ),
-            const SizedBox(height: 20),
-
-            // Status Dropdown
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 5),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: Colors.grey.shade300),
-              ),
-              child: Row(
-                children: [
-                  const Text(
-                    'Status: ',
-                    style: TextStyle(fontWeight: FontWeight.bold),
-                  ),
-                  Expanded(
-                    child: DropdownButtonHideUnderline(
-                      child: DropdownButton<String>(
-                        value: _currentStatus,
-                        isExpanded: true,
-                        items:
-                            [
-                              'Pending',
-                              'Confirmed',
-                              'In Progress',
-                              'Completed',
-                              'Cancelled',
-                            ].map((String value) {
-                              return DropdownMenuItem<String>(
-                                value: value,
-                                child: Text(
-                                  value,
-                                  style: TextStyle(
-                                    color: value == 'Cancelled'
-                                        ? Colors.red
-                                        : Colors.black,
-                                  ),
-                                ),
-                              );
-                            }).toList(),
-                        onChanged: _updateStatus,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 20),
-
-            if (_currentStatus == 'Pending')
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: () async {
-                    final messenger = ScaffoldMessenger.of(context);
-                    await StaffService.updateBookingStatus(
-                      widget.booking['id'],
-                      'Confirmed',
-                    );
-                    try {
-                      final uid = widget.booking['userId'];
-                      if (uid != null) {
-                        String friendlyDate =
-                            widget.booking['date']?.toString() ?? '';
-                        try {
-                          final parsed = DateFormat(
-                            'yyyy-MM-dd',
-                          ).parse(friendlyDate);
-                          friendlyDate = DateFormat(
-                            'EEEE, d MMMM',
-                          ).format(parsed);
-                        } catch (_) {
-                          // Keep raw string if parsing fails
-                        }
-                        final friendlyTime =
-                            widget.booking['time']?.toString() ?? '';
-                        await FirebaseDatabase.instance
-                            .ref('notifications/$uid')
-                            .push()
-                            .set({
-                              'message':
-                                  'Great news! Your appointment on $friendlyDate at $friendlyTime is confirmed. Tap to see your appointment summary.',
-                              'timestamp': ServerValue.timestamp,
-                              'type': 'booking_confirmed',
-                              'bookingId': widget.booking['id'],
-                              'date': widget.booking['date'],
-                              'time': widget.booking['time'],
-                            });
-                      }
-                    } catch (_) {}
-                    if (mounted) {
-                      setState(() {
-                        _currentStatus = 'Confirmed';
-                      });
-                      messenger.showSnackBar(
-                        const SnackBar(content: Text('Booking confirmed')),
-                      );
-                    }
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF5D5343),
-                    foregroundColor: Colors.white,
-                  ),
-                  child: const Text('Confirm Booking'),
-                ),
-              ),
-            const SizedBox(height: 10),
-
-            // Services Info
-            const Text(
-              'Services',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 10),
-
-            StreamBuilder<List<Map<String, dynamic>>>(
-              stream: CatalogService.getAllServicesStreamWithFallback(),
-              builder: (context, snapshot) {
-                final servicesData = snapshot.data ?? [];
-                List<String> allTitles = servicesData
-                    .map((s) => s['title'])
-                    .whereType<String>()
-                    .where((t) => t.trim().isNotEmpty)
-                    .toSet()
-                    .toList();
-
-                // Fallback if catalog is empty or offline
-                if (allTitles.isEmpty) {
-                  allTitles = _hardcodedServices;
-                }
-
-                // Ensure currently selected services are in the list if they are custom/old
-                for (final s in _selectedServices) {
-                  if (!allTitles.contains(s)) {
-                    allTitles.add(s);
-                  }
-                }
-
-                return MultiSelectDropdownWithChips(
-                  allItems: allTitles,
-                  selectedItems: _selectedServices,
-                  onChanged: (list) {
-                    setState(() {
-                      _selectedServices = list;
-                    });
-                    _saveServices();
-                  },
-                  hint: 'Select Services',
-                  maxSelection: 3,
-                );
-              },
-            ),
-            const SizedBox(height: 30),
-
-            // Notes Section
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const Text(
-                  'Notes',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                ),
-                IconButton(
-                  icon: const Icon(Icons.add_circle, color: Color(0xFFD4AF37)),
-                  onPressed: _showAddNoteDialog,
-                ),
-              ],
-            ),
-            StreamBuilder<List<Map<String, dynamic>>>(
-              stream: StaffService.getBookingNotesStream(widget.booking['id']),
-              builder: (context, snapshot) {
-                if (snapshot.hasError) {
-                  return const Text('Error loading notes');
-                }
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(child: CircularProgressIndicator());
-                }
-                final notes = snapshot.data ?? [];
-                if (notes.isEmpty) {
-                  return const Text('No notes yet.');
-                }
-                return Column(
-                  children: notes.map((note) {
-                    final noteId = note['id'];
-                    return Card(
-                      margin: const EdgeInsets.only(bottom: 10),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: ListTile(
-                        title: Text(note['content'] ?? ''),
-                        subtitle: Text(
-                          DateFormat('MMM d, yyyy h:mm a').format(
-                            DateTime.fromMillisecondsSinceEpoch(
-                              note['timestamp'] ?? 0,
-                            ),
-                          ),
-                          style: const TextStyle(fontSize: 10),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 8,
                         ),
-                        trailing: PopupMenuButton(
-                          onSelected: (value) {
-                            if (value == 'edit') {
-                              _showEditNoteDialog(noteId, note['content']);
-                            } else if (value == 'delete') {
-                              StaffService.deleteBookingNote(
-                                widget.booking['id'],
-                                noteId,
-                              );
-                            }
-                          },
-                          itemBuilder: (context) => [
-                            const PopupMenuItem(
-                              value: 'edit',
-                              child: Text('Edit'),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFD4AF37), // Gold/Mustard
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Column(
+                          children: [
+                            Text(
+                              day,
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 24,
+                                fontWeight: FontWeight.bold,
+                              ),
                             ),
-                            const PopupMenuItem(
-                              value: 'delete',
-                              child: Text('Delete'),
+                            Text(
+                              monthYear,
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 10,
+                              ),
                             ),
                           ],
                         ),
                       ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 30),
+
+                // Customer Info
+                StreamBuilder<DatabaseEvent>(
+                  stream: FirebaseDatabase.instance
+                      .ref('users/${bookingData['userId']}')
+                      .onValue,
+                  builder: (context, snapshot) {
+                    final rootData =
+                        snapshot.data?.snapshot.value as Map<dynamic, dynamic>?;
+                    final profile =
+                        rootData?['profile'] as Map<dynamic, dynamic>?;
+
+                    final name = (() {
+                      final fn = profile?['firstName']?.toString() ?? '';
+                      final ln = profile?['lastName']?.toString() ?? '';
+                      final full = [
+                        fn,
+                        ln,
+                      ].where((s) => s.isNotEmpty).join(' ');
+                      if (full.isNotEmpty) return full;
+                      return (rootData?['name']?.toString() ??
+                          bookingData['userName']?.toString() ??
+                          'Unknown Customer');
+                    })();
+
+                    final phone =
+                        (profile?['phone']?.toString() ??
+                        rootData?['phone']?.toString() ??
+                        '');
+                    final email =
+                        (rootData?['email']?.toString() ??
+                        profile?['email']?.toString() ??
+                        '');
+
+                    // Decode profile picture
+                    final photoBase64 = profile?['photoBase64']?.toString();
+                    Uint8List? photoBytes;
+                    if (photoBase64 != null && photoBase64.isNotEmpty) {
+                      try {
+                        photoBytes = base64Decode(photoBase64);
+                      } catch (_) {
+                        photoBytes = null;
+                      }
+                    }
+
+                    return Row(
+                      children: [
+                        CircleAvatar(
+                          radius: 30,
+                          backgroundImage: photoBytes != null
+                              ? MemoryImage(photoBytes)
+                              : NetworkImage(_customerImage) as ImageProvider,
+                        ),
+                        const SizedBox(width: 15),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                name,
+                                style: const TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              if (phone.isNotEmpty)
+                                Text(
+                                  'Phone: $phone',
+                                  style: const TextStyle(color: Colors.black54),
+                                ),
+                              if (email.isNotEmpty)
+                                Text(
+                                  'Email: $email',
+                                  style: const TextStyle(color: Colors.black54),
+                                ),
+                              const SizedBox(height: 8),
+                              Row(
+                                children: [
+                                  if (phone.isNotEmpty)
+                                    ElevatedButton(
+                                      onPressed: () {
+                                        launchUrlString('tel:$phone');
+                                      },
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: const Color(
+                                          0xFFD4AF37,
+                                        ),
+                                        foregroundColor: Colors.white,
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 14,
+                                          vertical: 10,
+                                        ),
+                                      ),
+                                      child: const Text('Call Customer'),
+                                    ),
+                                  const SizedBox(width: 10),
+                                  if (email.isNotEmpty)
+                                    ElevatedButton(
+                                      onPressed: () {
+                                        final subject = Uri.encodeComponent(
+                                          'Booking Confirmation',
+                                        );
+                                        final body = Uri.encodeComponent(
+                                          'Dear $name,\n\nYour booking has been confirmed.\n\nBest regards,\nBlossom',
+                                        );
+                                        launchUrlString(
+                                          'mailto:$email?subject=$subject&body=$body',
+                                        );
+                                      },
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: const Color(
+                                          0xFF5D5343,
+                                        ),
+                                        foregroundColor: Colors.white,
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 14,
+                                          vertical: 10,
+                                        ),
+                                      ),
+                                      child: const Text('Email Customer'),
+                                    ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
                     );
-                  }).toList(),
-                );
-              },
+                  },
+                ),
+                const SizedBox(height: 20),
+
+                // Status Dropdown
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 15,
+                    vertical: 5,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: Colors.grey.shade300),
+                  ),
+                  child: Row(
+                    children: [
+                      const Text(
+                        'Status: ',
+                        style: TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                      Expanded(
+                        child: DropdownButtonHideUnderline(
+                          child: DropdownButton<String>(
+                            value: status,
+                            isExpanded: true,
+                            items:
+                                [
+                                  'Pending',
+                                  'Confirmed',
+                                  'In Progress',
+                                  'Completed',
+                                  'Cancelled',
+                                ].map((String value) {
+                                  return DropdownMenuItem<String>(
+                                    value: value,
+                                    child: Text(
+                                      value,
+                                      style: TextStyle(
+                                        color: value == 'Cancelled'
+                                            ? Colors.red
+                                            : Colors.black,
+                                      ),
+                                    ),
+                                  );
+                                }).toList(),
+                            onChanged: _updateStatus,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 20),
+
+                // Cancellation Info
+                if (status == 'Cancelled') ...[
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.red.shade50,
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: Colors.red.shade200),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'This appointment is cancelled.',
+                          style: TextStyle(
+                            color: Colors.red.shade900,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        if (bookingData['cancelledBy'] != null) ...[
+                          const SizedBox(height: 4),
+                          Text(
+                            'By: ${bookingData['cancelledBy'] == 'customer' ? 'Customer' : 'Staff'}',
+                            style: TextStyle(color: Colors.red.shade900),
+                          ),
+                        ],
+                        if (bookingData['cancellationReason'] != null) ...[
+                          const SizedBox(height: 4),
+                          Text(
+                            'Reason: ${bookingData['cancellationReason']}',
+                            style: TextStyle(color: Colors.red.shade900),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                ],
+
+                if (status == 'Pending')
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      onPressed: () async {
+                        final messenger = ScaffoldMessenger.of(context);
+                        await StaffService.updateBookingStatus(
+                          bookingData['id'],
+                          'Confirmed',
+                        );
+                        try {
+                          final uid = bookingData['userId'];
+                          if (uid != null) {
+                            String friendlyDate =
+                                bookingData['date']?.toString() ?? '';
+                            try {
+                              final parsed = DateFormat(
+                                'yyyy-MM-dd',
+                              ).parse(friendlyDate);
+                              friendlyDate = DateFormat(
+                                'EEEE, d MMMM',
+                              ).format(parsed);
+                            } catch (_) {
+                              // Keep raw string if parsing fails
+                            }
+                            final friendlyTime =
+                                bookingData['time']?.toString() ?? '';
+                            await FirebaseDatabase.instance
+                                .ref('notifications/$uid')
+                                .push()
+                                .set({
+                                  'message':
+                                      'Great news! Your appointment on $friendlyDate at $friendlyTime is confirmed. Tap to see your appointment summary.',
+                                  'timestamp': ServerValue.timestamp,
+                                  'type': 'booking_confirmed',
+                                  'bookingId': bookingData['id'],
+                                  'date': bookingData['date'],
+                                  'time': bookingData['time'],
+                                });
+                          }
+                        } catch (_) {}
+                        if (mounted) {
+                          // No setState needed for status as Stream updates
+                          messenger.showSnackBar(
+                            const SnackBar(content: Text('Booking confirmed')),
+                          );
+                        }
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF5D5343),
+                        foregroundColor: Colors.white,
+                      ),
+                      child: const Text('Confirm Booking'),
+                    ),
+                  ),
+                const SizedBox(height: 10),
+
+                // Services Info
+                const Text(
+                  'Services',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 10),
+
+                StreamBuilder<List<Map<String, dynamic>>>(
+                  stream: CatalogService.getAllServicesStreamWithFallback(),
+                  builder: (context, snapshot) {
+                    final servicesData = snapshot.data ?? [];
+                    List<String> allTitles = servicesData
+                        .map((s) => s['title'])
+                        .whereType<String>()
+                        .where((t) => t.trim().isNotEmpty)
+                        .toSet()
+                        .toList();
+
+                    // Fallback if catalog is empty or offline
+                    if (allTitles.isEmpty) {
+                      allTitles = _hardcodedServices;
+                    }
+
+                    // Ensure currently selected services are in the list if they are custom/old
+                    for (final s in currentServices) {
+                      if (!allTitles.contains(s)) {
+                        allTitles.add(s);
+                      }
+                    }
+
+                    return MultiSelectDropdownWithChips(
+                      allItems: allTitles,
+                      selectedItems: currentServices,
+                      onChanged: (list) {
+                        // Optimistic update if needed, but here we just call service
+                        // The stream will update the UI
+                        StaffService.updateBookingServices(
+                          bookingData['id'],
+                          list,
+                        );
+                        if (mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('Services updated')),
+                          );
+                        }
+                      },
+                      hint: 'Select Services',
+                      maxSelection: 3,
+                    );
+                  },
+                ),
+                const SizedBox(height: 30),
+
+                // Notes Section
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text(
+                      'Notes',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(
+                        Icons.add_circle,
+                        color: Color(0xFFD4AF37),
+                      ),
+                      onPressed: _showAddNoteDialog,
+                    ),
+                  ],
+                ),
+
+                StreamBuilder<List<Map<String, dynamic>>>(
+                  stream: StaffService.getBookingNotesStream(
+                    widget.booking['id'],
+                  ),
+                  builder: (context, snapshot) {
+                    if (snapshot.hasError) {
+                      return const Text('Error loading notes');
+                    }
+                    if (snapshot.connectionState == ConnectionState.waiting) {
+                      return const Center(child: CircularProgressIndicator());
+                    }
+                    final notes = snapshot.data ?? [];
+                    if (notes.isEmpty) {
+                      return const Text('No notes yet.');
+                    }
+                    return Column(
+                      children: notes.map((note) {
+                        final noteId = note['id'];
+                        return Card(
+                          margin: const EdgeInsets.only(bottom: 10),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: ListTile(
+                            title: Text(note['content'] ?? ''),
+                            subtitle: Text(
+                              DateFormat('MMM d, yyyy h:mm a').format(
+                                DateTime.fromMillisecondsSinceEpoch(
+                                  note['timestamp'] ?? 0,
+                                ),
+                              ),
+                              style: const TextStyle(fontSize: 10),
+                            ),
+                            trailing: PopupMenuButton(
+                              onSelected: (value) {
+                                if (value == 'edit') {
+                                  _showEditNoteDialog(noteId, note['content']);
+                                } else if (value == 'delete') {
+                                  StaffService.deleteBookingNote(
+                                    widget.booking['id'],
+                                    noteId,
+                                  );
+                                }
+                              },
+                              itemBuilder: (context) => [
+                                const PopupMenuItem(
+                                  value: 'edit',
+                                  child: Text('Edit'),
+                                ),
+                                const PopupMenuItem(
+                                  value: 'delete',
+                                  child: Text('Delete'),
+                                ),
+                              ],
+                            ),
+                          ),
+                        );
+                      }).toList(),
+                    );
+                  },
+                ),
+                const SizedBox(height: 50),
+              ],
             ),
-            const SizedBox(height: 50),
-          ],
-        ),
+          );
+        },
       ),
     );
   }

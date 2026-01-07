@@ -103,8 +103,8 @@ class LocationMapScreen extends StatelessWidget {
 
   Future<void> _launchMaps() async {
     // Stella Beauty Salon / Century Plaza Block C
-    const double lat = 5.7358;
-    const double lng = 115.9321;
+    // const double lat = 5.7358;
+    // const double lng = 115.9321;
     final Uri googleMapsUrl = Uri.parse(
       'https://www.google.com/maps/search/?api=1&query=Stella+Beauty+Salon+Spa+Papar+Sabah',
     );

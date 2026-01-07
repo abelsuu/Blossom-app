@@ -8,7 +8,7 @@ import 'package:image_picker/image_picker.dart';
 class SkinAnalysisService {
   // TODO: Replace with your actual Gemini API Key from https://aistudio.google.com/app/apikey
   // The current key might be invalid or quota exceeded.
-  static const String _apiKey = 'AIzaSyD50G0aEGv-OtQ51VBp2HFp7oJpTHwqUFE';
+  static const String _apiKey = '';
 
   /// Analyzes the skin from the provided image file.
   Future<Map<String, dynamic>> analyzeSkin(XFile imageFile) async {
