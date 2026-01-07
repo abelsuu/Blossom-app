@@ -83,7 +83,7 @@ class _AdminAuthScreenState extends State<AdminAuthScreen> {
           }
         }
         return Scaffold(
-          backgroundColor: const Color(0xFFFFF8E1),
+          backgroundColor: const Color(0xFFFDF7F2),
           body: Center(
             child: SingleChildScrollView(
               child: Column(
@@ -93,27 +93,9 @@ class _AdminAuthScreenState extends State<AdminAuthScreen> {
                   ClipOval(
                     child: Image.asset(
                       'assets/images/logo.jpeg',
-                      width: 150,
-                      height: 150,
+                      width: 250,
+                      height: 250,
                       fit: BoxFit.cover,
-                    ),
-                  ),
-                  const SizedBox(height: 24),
-                  const Text(
-                    'BLOSSOM',
-                    style: TextStyle(
-                      fontSize: 32,
-                      fontWeight: FontWeight.bold,
-                      letterSpacing: 2,
-                      color: Color(0xFF5D5343),
-                    ),
-                  ),
-                  const Text(
-                    'BEAUTY & WELLNESS',
-                    style: TextStyle(
-                      fontSize: 12,
-                      letterSpacing: 4,
-                      color: Color(0xFF5D5343),
                     ),
                   ),
                   const SizedBox(height: 48),
@@ -166,7 +148,7 @@ class _AdminAuthScreenState extends State<AdminAuthScreen> {
                         TextField(
                           controller: _emailController,
                           decoration: InputDecoration(
-                            hintText: 'admin@blossom.my',
+                            hintText: 'Email',
                             filled: true,
                             fillColor: const Color(
                               0xFFFFF8E1,
@@ -193,7 +175,7 @@ class _AdminAuthScreenState extends State<AdminAuthScreen> {
                           controller: _passwordController,
                           obscureText: true,
                           decoration: InputDecoration(
-                            hintText: '••••••••',
+                            hintText: 'Password',
                             filled: true,
                             fillColor: const Color(
                               0xFFFFF8E1,

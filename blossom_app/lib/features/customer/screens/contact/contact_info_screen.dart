@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:blossom_app/features/customer/screens/contact/location_map_screen.dart';
+import 'package:blossom_app/features/customer/screens/location/location_map_screen.dart';
 
 class ContactInfoScreen extends StatelessWidget {
   const ContactInfoScreen({super.key});

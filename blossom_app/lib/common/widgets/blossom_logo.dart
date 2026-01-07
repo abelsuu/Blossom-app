@@ -34,27 +34,6 @@ class BlossomLogo extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Icon(Icons.spa, size: width * 0.3, color: Colors.black54),
-              if (withText) ...[
-                const SizedBox(height: 10),
-                const Text(
-                  'BLOSSOM',
-                  style: TextStyle(
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
-                    letterSpacing: 2,
-                    color: Color(0xFF4A4A4A),
-                    fontFamily: 'Serif', // Try to match the elegant font style
-                  ),
-                ),
-                const Text(
-                  'BEAUTY & WELLNESS',
-                  style: TextStyle(
-                    fontSize: 12,
-                    letterSpacing: 1,
-                    color: Color(0xFF4A4A4A),
-                  ),
-                ),
-              ],
             ],
           ),
         );

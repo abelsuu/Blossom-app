@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:firebase_database/firebase_database.dart';
 import 'package:blossom_app/features/auth/screens/login_screen.dart';
 import 'package:blossom_app/features/customer/screens/signup/signup_basic_info_screen.dart';
 
@@ -15,82 +14,25 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   final PageController _pageController = PageController();
   int _currentPage = 0;
 
-  List<Map<String, String>> _onboardingData = [
-    {
-      "text": "SPA only for\nWomen",
-      "image":
-          "https://images.unsplash.com/photo-1544161515-4ab6ce6db874?q=80&w=1200&auto=format&fit=crop",
-    },
+  final List<Map<String, String>> _onboardingData = [
+    {"text": "SPA only for\nWomen", "image": "assets/images/spa-for-women.png"},
     {
       "text": "Providing you with\nAI Skin Analysis\nFeature",
       "image": "assets/images/ai-skin-analysis.png",
     },
     {
       "text": "Friendly Staffs\nto Serve you",
-      "image":
-          "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?q=80&w=1200&auto=format&fit=crop",
+      "image": "assets/images/pic-staff.jpg",
     },
-    {
-      "text": "Comfortable\nSpace",
-      "image":
-          "https://images.unsplash.com/photo-1519710164239-da123dc03ef4?q=80&w=1200&auto=format&fit=crop",
-    },
-    {
-      "text": "Affordable\nServices",
-      "image":
-          "https://images.unsplash.com/photo-1519823551278-64ac92734fb1?q=80&w=1200&auto=format&fit=crop",
-    },
+    {"text": "Comfortable\nSpace", "image": "assets/images/ruang.jpg"},
+    {"text": "Affordable\nServices", "image": "assets/images/service.jpg"},
   ];
 
   @override
   void initState() {
     super.initState();
-    _fetchOnboardingConfig();
-  }
-
-  Future<void> _fetchOnboardingConfig() async {
-    try {
-      final event = await FirebaseDatabase.instance
-          .ref('app_config/onboarding')
-          .once();
-      final value = event.snapshot.value;
-      if (value is List) {
-        final parsed = <Map<String, String>>[];
-        for (final item in value) {
-          if (item is Map) {
-            final text = item['text']?.toString() ?? '';
-            final image =
-                item['imageUrl']?.toString() ?? item['image']?.toString() ?? '';
-            if (text.isNotEmpty && image.isNotEmpty) {
-              parsed.add({"text": text, "image": image});
-            }
-          }
-        }
-        if (parsed.isNotEmpty && mounted) {
-          setState(() {
-            _onboardingData = parsed;
-          });
-        }
-      } else if (value is Map) {
-        final entries = value.values;
-        final parsed = <Map<String, String>>[];
-        for (final item in entries) {
-          if (item is Map) {
-            final text = item['text']?.toString() ?? '';
-            final image =
-                item['imageUrl']?.toString() ?? item['image']?.toString() ?? '';
-            if (text.isNotEmpty && image.isNotEmpty) {
-              parsed.add({"text": text, "image": image});
-            }
-          }
-        }
-        if (parsed.isNotEmpty && mounted) {
-          setState(() {
-            _onboardingData = parsed;
-          });
-        }
-      }
-    } catch (_) {}
+    // TODO: Uncomment this to fetch from Firebase. Currently disabled to use local hardcoded data.
+    // _fetchOnboardingConfig();
   }
 
   @override
@@ -311,6 +253,16 @@ class OnboardingPage extends StatelessWidget {
       );
     }
 
+    if (fallbackUrl.startsWith('assets/')) {
+      return Image.asset(
+        fallbackUrl,
+        fit: BoxFit.cover,
+        errorBuilder: (context, error, stackTrace) {
+          return _buildErrorPlaceholder();
+        },
+      );
+    }
+
     // Generic Network Fallback
     return Image.network(
       fallbackUrl,
@@ -337,17 +289,17 @@ class OnboardingPage extends StatelessWidget {
   String _fallbackUrlForText(String t) {
     final lower = t.toLowerCase();
     if (lower.contains('ai skin')) {
-      return 'https://images.unsplash.com/photo-1505167919709-1983dffec2fe?ixlib=rb-4.0.3&auto=format&fit=crop&w=1200&q=80';
+      return 'assets/images/ai-skin-analysis.png';
     }
     if (lower.contains('friendly staffs')) {
-      return 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?ixlib=rb-4.0.3&auto=format&fit=crop&w=1200&q=80';
+      return 'assets/images/pic-staff.jpg';
     }
     if (lower.contains('comfortable')) {
-      return 'https://images.unsplash.com/photo-1519710164239-da123dc03ef4?ixlib=rb-4.0.3&auto=format&fit=crop&w=1200&q=80';
+      return 'assets/images/ruang.jpg';
     }
     if (lower.contains('affordable')) {
-      return 'https://images.unsplash.com/photo-1519823551278-64ac92734fb1?ixlib=rb-4.0.3&auto=format&fit=crop&w=1200&q=80';
+      return 'assets/images/service.jpg';
     }
-    return 'https://images.unsplash.com/photo-1544161515-4ab6ce6db874?ixlib=rb-4.0.3&auto=format&fit=crop&w=1200&q=80';
+    return 'assets/images/spa-for-women.png';
   }
 }

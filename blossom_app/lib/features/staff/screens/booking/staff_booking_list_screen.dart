@@ -3,10 +3,17 @@ import 'package:blossom_app/features/staff/services/staff_service.dart';
 import 'package:blossom_app/features/staff/screens/booking/appointment_details_screen.dart';
 import 'package:intl/intl.dart';
 
-class StaffBookingListScreen extends StatelessWidget {
+class StaffBookingListScreen extends StatefulWidget {
   final bool isTab;
 
   const StaffBookingListScreen({super.key, this.isTab = false});
+
+  @override
+  State<StaffBookingListScreen> createState() => _StaffBookingListScreenState();
+}
+
+class _StaffBookingListScreenState extends State<StaffBookingListScreen> {
+  String _sortOrder = 'newest'; // 'newest' or 'oldest'
 
   @override
   Widget build(BuildContext context) {
@@ -30,15 +37,50 @@ class StaffBookingListScreen extends StatelessWidget {
                       color: Colors.black,
                     ),
                   ),
-                  if (!isTab)
-                    IconButton(
-                      icon: const Icon(
-                        Icons.reply,
-                        size: 30,
-                        color: Colors.black,
+                  Row(
+                    children: [
+                      PopupMenuButton<String>(
+                        icon: const Icon(Icons.sort, color: Colors.black),
+                        tooltip: 'Sort Bookings',
+                        onSelected: (value) {
+                          setState(() {
+                            _sortOrder = value;
+                          });
+                        },
+                        itemBuilder: (context) => [
+                          const PopupMenuItem(
+                            value: 'newest',
+                            child: Row(
+                              children: [
+                                Icon(Icons.arrow_downward, size: 18),
+                                SizedBox(width: 8),
+                                Text('Newest First'),
+                              ],
+                            ),
+                          ),
+                          const PopupMenuItem(
+                            value: 'oldest',
+                            child: Row(
+                              children: [
+                                Icon(Icons.arrow_upward, size: 18),
+                                SizedBox(width: 8),
+                                Text('Oldest First'),
+                              ],
+                            ),
+                          ),
+                        ],
                       ),
-                      onPressed: () => Navigator.pop(context),
-                    ),
+                      if (!widget.isTab)
+                        IconButton(
+                          icon: const Icon(
+                            Icons.reply,
+                            size: 30,
+                            color: Colors.black,
+                          ),
+                          onPressed: () => Navigator.pop(context),
+                        ),
+                    ],
+                  ),
                 ],
               ),
               const SizedBox(height: 10),
@@ -58,7 +100,23 @@ class StaffBookingListScreen extends StatelessWidget {
                       return const Center(child: CircularProgressIndicator());
                     }
 
-                    final bookings = snapshot.data ?? [];
+                    var bookings = snapshot.data ?? [];
+
+                    // Sort bookings
+                    bookings.sort((a, b) {
+                      try {
+                        DateTime dtA = _parseDateTime(a['date'], a['time']);
+                        DateTime dtB = _parseDateTime(b['date'], b['time']);
+                        
+                        if (_sortOrder == 'newest') {
+                          return dtB.compareTo(dtA);
+                        } else {
+                          return dtA.compareTo(dtB);
+                        }
+                      } catch (e) {
+                        return 0;
+                      }
+                    });
 
                     if (bookings.isEmpty) {
                       return const Center(
@@ -84,6 +142,37 @@ class StaffBookingListScreen extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  DateTime _parseDateTime(String? dateStr, String? timeStr) {
+    final now = DateTime.now();
+    if (dateStr == null) return now;
+    
+    try {
+      final date = DateFormat('yyyy-MM-dd').parse(dateStr);
+      
+      int hour = 0;
+      int minute = 0;
+      
+      if (timeStr != null && timeStr.isNotEmpty) {
+        // Try parsing different time formats
+        try {
+           // Try H:mm
+           final parts = timeStr.split(':');
+           if (parts.length == 2) {
+             hour = int.parse(parts[0]);
+             minute = int.parse(parts[1]);
+           }
+        } catch (_) {
+          // If simple split fails, try parsing with DateFormat if needed
+          // But assuming standard H:mm or similar from earlier code context
+        }
+      }
+      
+      return DateTime(date.year, date.month, date.day, hour, minute);
+    } catch (e) {
+      return now;
+    }
   }
 
   Widget _buildBookingCard(BuildContext context, Map<String, dynamic> booking) {

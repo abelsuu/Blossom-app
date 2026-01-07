@@ -1,3 +1,5 @@
+import 'dart:convert';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:blossom_app/features/customer/screens/booking/booking_screen.dart';
@@ -19,6 +21,14 @@ class SpecialOfferDetailsScreen extends StatelessWidget {
     final validUntil = promo['validUntil'] as String?;
     final description = promo['description'] as String?;
     final applicableTreatments = promo['applicableTreatments'] as String?;
+
+    final imageBase64 = promo['imageBase64'] as String?;
+    Uint8List? imageBytes;
+    if (imageBase64 != null && imageBase64.isNotEmpty) {
+      try {
+        imageBytes = base64Decode(imageBase64);
+      } catch (_) {}
+    }
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -43,7 +53,14 @@ class SpecialOfferDetailsScreen extends StatelessWidget {
               background: Stack(
                 fit: StackFit.expand,
                 children: [
-                  if (imageUrl != null)
+                  if (imageBytes != null)
+                    Image.memory(
+                      imageBytes,
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) =>
+                          Container(color: color),
+                    )
+                  else if (imageUrl != null && imageUrl.isNotEmpty)
                     Image.network(
                       imageUrl,
                       fit: BoxFit.cover,

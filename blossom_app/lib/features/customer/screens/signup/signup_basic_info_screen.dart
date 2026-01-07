@@ -46,7 +46,7 @@ class SignUpBasicInfoScreen extends StatelessWidget {
             TextField(
               controller: emailController,
               decoration: const InputDecoration(
-                hintText: 'Enter your email',
+                hintText: 'Email',
                 prefixIcon: Icon(Icons.email_outlined),
               ),
             ),

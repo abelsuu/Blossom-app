@@ -31,7 +31,7 @@ class _MainLayoutState extends State<MainLayout> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFFDFCF2), // Main content background
+      backgroundColor: const Color(0xFFFDF7F2), // Main content background
       body: Row(
         children: [
           SideBar(

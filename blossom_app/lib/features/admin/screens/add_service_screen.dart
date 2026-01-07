@@ -674,20 +674,6 @@ class _AddServiceScreenState extends State<AddServiceScreen> {
 
                       const SizedBox(height: 16),
 
-                      // Warning text for manual upload
-                      if (!_useManualUrl) ...[
-                        const Text(
-                          '⚠️ Upload disabled on free plan',
-                          style: TextStyle(
-                            color: Colors.red,
-                            fontSize: 12,
-                            fontWeight: FontWeight.bold,
-                          ),
-                          textAlign: TextAlign.center,
-                        ),
-                        const SizedBox(height: 8),
-                      ],
-
                       ElevatedButton(
                         onPressed: _isSaving ? null : _saveService,
                         style: ElevatedButton.styleFrom(

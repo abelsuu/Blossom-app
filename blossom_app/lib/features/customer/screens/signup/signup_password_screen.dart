@@ -41,11 +41,13 @@ class SignUpPasswordScreen extends StatelessWidget {
             controller: passwordController,
             obscureText: true,
             decoration: const InputDecoration(
-              hintText: 'Enter password',
+              hintText: 'Password',
               prefixIcon: Icon(Icons.lock_outline),
             ),
           ),
           const SizedBox(height: 20),
+
+          // Confirm Password
           Text(
             'Confirm Password',
             style: theme.textTheme.titleSmall?.copyWith(
@@ -57,7 +59,7 @@ class SignUpPasswordScreen extends StatelessWidget {
             controller: confirmPasswordController,
             obscureText: true,
             decoration: const InputDecoration(
-              hintText: 'Re-enter password',
+              hintText: 'Confirm Password',
               prefixIcon: Icon(Icons.lock_outline),
             ),
           ),
@@ -153,57 +155,59 @@ class SignUpPasswordScreen extends StatelessWidget {
                           );
                           final ownerUid = data["ownerUid"];
                           if (ownerUid != null && ownerUid != uid) {
-                            final referrerLoyalty =
-                                FirebaseDatabase.instance
-                                    .ref("users/$ownerUid/loyalty");
-                            final refereeLoyalty =
-                                FirebaseDatabase.instance
-                                    .ref("users/$uid/loyalty");
+                            final referrerLoyalty = FirebaseDatabase.instance
+                                .ref("users/$ownerUid/loyalty");
+                            final refereeLoyalty = FirebaseDatabase.instance
+                                .ref("users/$uid/loyalty");
                             final referrerSnap = await referrerLoyalty.get();
                             final refereeSnap = await refereeLoyalty.get();
                             int refPoints = 0;
                             int rePoints = 0;
                             if (referrerSnap.exists) {
                               final m = Map<String, dynamic>.from(
-                                  referrerSnap.value as Map);
+                                referrerSnap.value as Map,
+                              );
                               refPoints = m["points"] as int? ?? 0;
                             }
                             if (refereeSnap.exists) {
                               final m = Map<String, dynamic>.from(
-                                  refereeSnap.value as Map);
+                                refereeSnap.value as Map,
+                              );
                               rePoints = m["points"] as int? ?? 0;
                             }
-                            await referrerLoyalty.update(
-                              {"points": refPoints + 10},
-                            );
-                            await refereeLoyalty.update({"points": rePoints + 5});
+                            await referrerLoyalty.update({
+                              "points": refPoints + 10,
+                            });
+                            await refereeLoyalty.update({
+                              "points": rePoints + 5,
+                            });
                             await FirebaseDatabase.instance
                                 .ref("users/$ownerUid/loyalty/history")
                                 .push()
                                 .set({
-                              "type": "earned",
-                              "amount": 10,
-                              "date": ServerValue.timestamp,
-                              "description": "Referral reward",
-                              "refereeUid": uid
-                            });
+                                  "type": "earned",
+                                  "amount": 10,
+                                  "date": ServerValue.timestamp,
+                                  "description": "Referral reward",
+                                  "refereeUid": uid,
+                                });
                             await FirebaseDatabase.instance
                                 .ref("users/$uid/loyalty/history")
                                 .push()
                                 .set({
-                              "type": "earned",
-                              "amount": 5,
-                              "date": ServerValue.timestamp,
-                              "description": "Referral join reward",
-                              "referrerUid": ownerUid
-                            });
+                                  "type": "earned",
+                                  "amount": 5,
+                                  "date": ServerValue.timestamp,
+                                  "description": "Referral join reward",
+                                  "referrerUid": ownerUid,
+                                });
                             await FirebaseDatabase.instance
                                 .ref("referrals/redemptions/$uid")
                                 .set({
-                              "code": provided,
-                              "referrerUid": ownerUid,
-                              "timestamp": ServerValue.timestamp
-                            });
+                                  "code": provided,
+                                  "referrerUid": ownerUid,
+                                  "timestamp": ServerValue.timestamp,
+                                });
                           }
                         }
                       }

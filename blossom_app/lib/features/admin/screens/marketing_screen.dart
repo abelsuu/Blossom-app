@@ -1,5 +1,8 @@
 import 'package:blossom_app/features/customer/services/promotions_service.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
+import 'dart:convert';
 import 'package:intl/intl.dart';
 
 class MarketingScreen extends StatefulWidget {
@@ -16,6 +19,8 @@ class _MarketingScreenState extends State<MarketingScreen> {
   final _treatmentsController = TextEditingController();
   DateTime? _validUntil;
   String? _uploadedImageUrl;
+  Uint8List? _imageBytes;
+  bool _isPickingImage = false;
 
   int _selectedThemeIndex = 0;
   int _selectedImageIndex = 0;
@@ -72,6 +77,43 @@ class _MarketingScreenState extends State<MarketingScreen> {
     super.dispose();
   }
 
+  Future<void> _pickImage() async {
+    try {
+      setState(() {
+        _isPickingImage = true;
+      });
+      final picker = ImagePicker();
+      final XFile? img = await picker.pickImage(
+        source: ImageSource.gallery,
+        maxWidth: 800,
+        maxHeight: 800,
+        imageQuality: 70,
+      );
+      if (img != null) {
+        final bytes = await img.readAsBytes();
+        if (mounted) {
+          setState(() {
+            _imageBytes = bytes;
+            _uploadedImageUrl = null;
+            _selectedImageIndex = -1; // Indicate custom image
+          });
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Failed to pick image: $e')));
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isPickingImage = false;
+        });
+      }
+    }
+  }
+
   void _editPromo(Map<String, dynamic> promo) {
     setState(() {
       _editingId = promo['id'];
@@ -91,15 +133,28 @@ class _MarketingScreenState extends State<MarketingScreen> {
       final themeIndex = _themes.indexWhere((t) => t['color'] == promoColor);
       _selectedThemeIndex = themeIndex != -1 ? themeIndex : 0;
 
-      // Find matching image or set as uploaded
+      // Handle image logic
       final promoImage = promo['imageUrl'];
-      final imageIndex = _images.indexOf(promoImage);
-      if (imageIndex != -1) {
-        _selectedImageIndex = imageIndex;
-        _uploadedImageUrl = null;
+      final promoBase64 = promo['imageBase64'];
+
+      if (promoBase64 != null && promoBase64.isNotEmpty) {
+        try {
+          _imageBytes = base64Decode(promoBase64);
+          _selectedImageIndex = -1;
+          _uploadedImageUrl = null;
+        } catch (_) {
+          _imageBytes = null;
+        }
       } else {
-        _selectedImageIndex = -1; // Custom image
-        _uploadedImageUrl = promoImage;
+        _imageBytes = null;
+        final imageIndex = _images.indexOf(promoImage);
+        if (imageIndex != -1) {
+          _selectedImageIndex = imageIndex;
+          _uploadedImageUrl = null;
+        } else {
+          _selectedImageIndex = -1; // Custom image (URL based)
+          _uploadedImageUrl = promoImage;
+        }
       }
     });
   }
@@ -113,6 +168,7 @@ class _MarketingScreenState extends State<MarketingScreen> {
       _treatmentsController.clear();
       _validUntil = null;
       _uploadedImageUrl = null;
+      _imageBytes = null;
       _selectedThemeIndex = 0;
       _selectedImageIndex = 0;
     });
@@ -144,6 +200,7 @@ class _MarketingScreenState extends State<MarketingScreen> {
       'applicableTreatments': _treatmentsController.text,
       'validUntil': _validUntil?.toIso8601String(),
       'imageUrl': imageUrl,
+      if (_imageBytes != null) 'imageBase64': base64Encode(_imageBytes!),
       'color': theme['color'],
       'textColor': theme['textColor'],
       'pillColor': theme['pillColor'],
@@ -546,19 +603,49 @@ class _MarketingScreenState extends State<MarketingScreen> {
                             ),
                           ),
                           const SizedBox(height: 12),
-                          // Custom upload removed as per request
                           SizedBox(
                             height: 80,
                             child: ListView.separated(
                               scrollDirection: Axis.horizontal,
-                              itemCount: _images.length,
+                              itemCount: _images.length + 1,
                               separatorBuilder: (context, index) =>
                                   const SizedBox(width: 12),
                               itemBuilder: (context, index) {
-                                final isSelected = _selectedImageIndex == index;
+                                if (index == 0) {
+                                  // Upload Button
+                                  return GestureDetector(
+                                    onTap: _pickImage,
+                                    child: Container(
+                                      width: 80,
+                                      decoration: BoxDecoration(
+                                        color: const Color(0xFFFFF8E1),
+                                        borderRadius: BorderRadius.circular(12),
+                                        border: Border.all(
+                                          color: const Color(0xFF5D5343),
+                                          width: 2,
+                                        ),
+                                      ),
+                                      child: _isPickingImage
+                                          ? const Center(
+                                              child: CircularProgressIndicator(
+                                                strokeWidth: 2,
+                                              ),
+                                            )
+                                          : const Center(
+                                              child: Icon(
+                                                Icons.upload,
+                                                color: Color(0xFF5D5343),
+                                              ),
+                                            ),
+                                    ),
+                                  );
+                                }
+                                final imageIndex = index - 1;
+                                final isSelected =
+                                    _selectedImageIndex == imageIndex;
                                 return GestureDetector(
                                   onTap: () => setState(
-                                    () => _selectedImageIndex = index,
+                                    () => _selectedImageIndex = imageIndex,
                                   ),
                                   child: Container(
                                     width: 80,
@@ -571,7 +658,9 @@ class _MarketingScreenState extends State<MarketingScreen> {
                                             )
                                           : null,
                                       image: DecorationImage(
-                                        image: NetworkImage(_images[index]),
+                                        image: NetworkImage(
+                                          _images[imageIndex],
+                                        ),
                                         fit: BoxFit.cover,
                                       ),
                                     ),
@@ -820,25 +909,32 @@ class _MarketingScreenState extends State<MarketingScreen> {
               ],
             ),
           ),
+          // Image
           Positioned(
-            right: -15,
-            bottom: -15,
+            right: -20,
+            bottom: -20,
             child: Container(
-              width: 100,
-              height: 100,
+              width: 140,
+              height: 140,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 image: DecorationImage(
-                  image: NetworkImage(imageUrl),
+                  image: _imageBytes != null
+                      ? MemoryImage(_imageBytes!)
+                      : NetworkImage(imageUrl) as ImageProvider,
                   fit: BoxFit.cover,
                 ),
-                border: Border.all(color: Colors.white, width: 4),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.1),
+                    color: Colors.black.withValues(alpha: 0.2),
                     blurRadius: 10,
+                    offset: const Offset(0, 5),
                   ),
                 ],
+                border: Border.all(
+                  color: Colors.white.withValues(alpha: 0.8),
+                  width: 4,
+                ),
               ),
             ),
           ),

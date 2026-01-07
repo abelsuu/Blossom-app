@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'dart:convert';
+import 'dart:typed_data';
 import 'add_service_screen.dart';
 import 'package:firebase_database/firebase_database.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -281,6 +283,20 @@ class _ServicesScreenState extends State<ServicesScreen> {
     final description = serviceData['description'] ?? 'No description';
     // Price and other details are hidden on the card as requested
     final imageUrl = serviceData['imageUrl'] as String?;
+    final imageBase64 = serviceData['imageBase64'] as String?;
+    Uint8List? imageBytes;
+    if (imageBase64 != null && imageBase64.isNotEmpty) {
+      try {
+        imageBytes = base64Decode(imageBase64);
+      } catch (_) {}
+    }
+
+    ImageProvider? bgImage;
+    if (imageBytes != null) {
+      bgImage = MemoryImage(imageBytes);
+    } else if (imageUrl != null && imageUrl.isNotEmpty) {
+      bgImage = NetworkImage(imageUrl);
+    }
 
     return GestureDetector(
       onTap: () {
@@ -315,14 +331,11 @@ class _ServicesScreenState extends State<ServicesScreen> {
                       borderRadius: const BorderRadius.vertical(
                         top: Radius.circular(16),
                       ),
-                      image: imageUrl != null
-                          ? DecorationImage(
-                              image: NetworkImage(imageUrl),
-                              fit: BoxFit.cover,
-                            )
+                      image: bgImage != null
+                          ? DecorationImage(image: bgImage, fit: BoxFit.cover)
                           : null,
                     ),
-                    child: imageUrl == null
+                    child: bgImage == null
                         ? Center(
                             child: Icon(
                               icon,

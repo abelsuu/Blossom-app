@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_database/firebase_database.dart';
 import 'package:flutter/material.dart';
@@ -655,6 +656,7 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
                   title: promo['title'] ?? '',
                   subtitle: promo['subtitle'] ?? '',
                   imageUrl: promo['imageUrl'] ?? '',
+                  imageBase64: promo['imageBase64'],
                   textColor: Color(promo['textColor'] ?? 0xFFFFFFFF),
                   pillColor: Color(promo['pillColor'] ?? 0xCCFFFFFF),
                 ),
@@ -671,9 +673,20 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
     required String title,
     required String subtitle,
     required String imageUrl,
+    String? imageBase64,
     required Color textColor,
     required Color pillColor,
   }) {
+    ImageProvider? imageProvider;
+    if (imageBase64 != null && imageBase64.isNotEmpty) {
+      try {
+        imageProvider = MemoryImage(base64Decode(imageBase64));
+      } catch (_) {}
+    }
+    if (imageProvider == null && imageUrl.isNotEmpty) {
+      imageProvider = NetworkImage(imageUrl);
+    }
+
     return Container(
       width: 280,
       decoration: BoxDecoration(
@@ -734,10 +747,9 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
               height: 80,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                image: DecorationImage(
-                  image: NetworkImage(imageUrl),
-                  fit: BoxFit.cover,
-                ),
+                image: imageProvider != null
+                    ? DecorationImage(image: imageProvider, fit: BoxFit.cover)
+                    : null,
                 border: Border.all(
                   color: Colors.white.withValues(alpha: 0.2),
                   width: 4,

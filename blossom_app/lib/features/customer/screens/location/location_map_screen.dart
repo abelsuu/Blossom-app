@@ -8,58 +8,60 @@ class LocationMapScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Stack(
+      body: Column(
         children: [
-          SizedBox.expand(child: _buildMap()),
+          Expanded(child: _buildMap()),
 
           // Bottom Sheet
-          Positioned(
-            left: 0,
-            right: 0,
-            bottom: 0,
-            child: Container(
-              padding: const EdgeInsets.all(24),
-              decoration: const BoxDecoration(
-                color: Color(0xFFFFF8E1), // Beige
-                borderRadius: BorderRadius.only(
-                  topLeft: Radius.circular(24),
-                  topRight: Radius.circular(24),
+          Container(
+            padding: const EdgeInsets.all(24),
+            decoration: const BoxDecoration(
+              color: Color(0xFFFFF8E1), // Beige
+              borderRadius: BorderRadius.only(
+                topLeft: Radius.circular(24),
+                topRight: Radius.circular(24),
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black12,
+                  blurRadius: 10,
+                  offset: Offset(0, -5),
                 ),
-              ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  IconButton(
-                    icon: const Icon(Icons.arrow_back, color: Colors.black),
-                    onPressed: () => Navigator.pop(context),
-                    padding: EdgeInsets.zero,
-                    alignment: Alignment.centerLeft,
-                  ),
-                  const SizedBox(height: 16),
-                  const Row(
-                    children: [
-                      Icon(Icons.my_location, color: Colors.black87),
-                      SizedBox(width: 12),
-                      Text(
-                        'Century Plaza',
-                        style: TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                        ),
+              ],
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                IconButton(
+                  icon: const Icon(Icons.arrow_back, color: Colors.black),
+                  onPressed: () => Navigator.pop(context),
+                  padding: EdgeInsets.zero,
+                  alignment: Alignment.centerLeft,
+                ),
+                const SizedBox(height: 16),
+                const Row(
+                  children: [
+                    Icon(Icons.my_location, color: Colors.black87),
+                    SizedBox(width: 12),
+                    Text(
+                      'Century Plaza',
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
                       ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  const Padding(
-                    padding: EdgeInsets.only(left: 36.0),
-                    child: Text(
-                      'Lot 18 C 1st Floor Papar Century Plaza Papar Sabah',
-                      style: TextStyle(fontSize: 14, color: Colors.black54),
                     ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                const Padding(
+                  padding: EdgeInsets.only(left: 36.0),
+                  child: Text(
+                    'Lot 18 C 1st Floor Papar Century Plaza Papar Sabah',
+                    style: TextStyle(fontSize: 14, color: Colors.black54),
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
           ),
         ],

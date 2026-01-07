@@ -127,9 +127,15 @@ class _StaffScheduleScreenState extends State<StaffScheduleScreen>
                                 end,
                               );
                             } catch (e) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(content: Text('Error updating schedule: $e')),
-                              );
+                              if (context.mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text(
+                                      'Error updating schedule: $e',
+                                    ),
+                                  ),
+                                );
+                              }
                             }
                           },
                         ),

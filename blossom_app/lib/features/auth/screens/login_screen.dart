@@ -17,6 +17,7 @@ class LoginScreen extends StatelessWidget {
     final theme = Theme.of(context);
 
     return Scaffold(
+      backgroundColor: const Color(0xFFFDF7F2),
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 20.0),
@@ -29,8 +30,8 @@ class LoginScreen extends StatelessWidget {
                 child: ClipOval(
                   child: Image.asset(
                     'assets/images/logo.jpeg',
-                    width: 150,
-                    height: 150,
+                    width: 250,
+                    height: 250,
                     fit: BoxFit.cover,
                   ),
                 ),
@@ -84,7 +85,7 @@ class LoginScreen extends StatelessWidget {
               TextField(
                 controller: emailController,
                 decoration: const InputDecoration(
-                  hintText: 'cyinthia10@blossom.my',
+                  hintText: 'Email',
                   prefixIcon: Icon(Icons.email_outlined),
                 ),
               ),
@@ -102,7 +103,7 @@ class LoginScreen extends StatelessWidget {
                 controller: passwordController,
                 obscureText: true,
                 decoration: const InputDecoration(
-                  hintText: '********',
+                  hintText: 'Password',
                   prefixIcon: Icon(Icons.lock_outline),
                 ),
               ),

@@ -16,7 +16,7 @@ class _ChatConnectScreenState extends State<ChatConnectScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFFFF8E1),
+      backgroundColor: Colors.white,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
@@ -73,27 +73,6 @@ class _ChatConnectScreenState extends State<ChatConnectScreen> {
                         Icons.spa,
                         size: 60,
                         color: Theme.of(context).primaryColor,
-                      ),
-                      const SizedBox(height: 12),
-                      Text(
-                        'BLOSSOM',
-                        style: TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                          letterSpacing: 2,
-                          color: Theme.of(context).primaryColor,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        'BEAUTY & WELLNESS',
-                        style: TextStyle(
-                          fontSize: 10,
-                          letterSpacing: 1,
-                          color: Theme.of(
-                            context,
-                          ).primaryColor.withValues(alpha: 0.7),
-                        ),
                       ),
                     ],
                   ),

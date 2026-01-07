@@ -14,38 +14,22 @@ class SideBar extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       width: 250,
-      color: const Color(0xFFEEE6D3), // Beige background
+      color: const Color(0xFFFDF7F2), // Matches Login Background
       child: Column(
         children: [
           const SizedBox(height: 40),
           // Logo Area
           Column(
             children: [
-              Image.asset(
-                'assets/images/logo.jpeg',
-                height: 80,
-                width: 80,
-                fit: BoxFit.contain,
-              ),
-              SizedBox(height: 8),
-              Text(
-                'BLOSSOM',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w300,
-                  letterSpacing: 2,
-                  color: Color(0xFF5D5343),
+              ClipOval(
+                child: Image.asset(
+                  'assets/images/logo.jpeg',
+                  height: 150,
+                  width: 150,
+                  fit: BoxFit.cover,
                 ),
               ),
-              Text(
-                'BEAUTY & WELLNESS',
-                style: TextStyle(
-                  fontSize: 10,
-                  fontWeight: FontWeight.w300,
-                  letterSpacing: 1,
-                  color: Color(0xFF5D5343),
-                ),
-              ),
+              const SizedBox(height: 8),
             ],
           ),
           const SizedBox(height: 50),

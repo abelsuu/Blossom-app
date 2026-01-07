@@ -1,3 +1,5 @@
+import 'dart:convert';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:blossom_app/features/customer/screens/booking/booking_screen.dart';
 import 'package:blossom_app/features/customer/services/catalog_service.dart';
@@ -86,6 +88,14 @@ class _ServiceCatalogScreenState extends State<ServiceCatalogScreen> {
   }
 
   Widget _buildServiceCard(Map<String, dynamic> service) {
+    final imageBase64 = service['imageBase64'] as String?;
+    Uint8List? imageBytes;
+    if (imageBase64 != null && imageBase64.isNotEmpty) {
+      try {
+        imageBytes = base64Decode(imageBase64);
+      } catch (_) {}
+    }
+
     return Container(
       decoration: BoxDecoration(
         color: const Color(0xFFEBE6C8), // Lighter olive/beige
@@ -98,12 +108,30 @@ class _ServiceCatalogScreenState extends State<ServiceCatalogScreen> {
           // Image
           ClipRRect(
             borderRadius: BorderRadius.circular(10),
-            child: Image.network(
-              service['image'],
-              height: 150,
-              width: double.infinity,
-              fit: BoxFit.cover,
-            ),
+            child: imageBytes != null
+                ? Image.memory(
+                    imageBytes,
+                    height: 150,
+                    width: double.infinity,
+                    fit: BoxFit.cover,
+                  )
+                : Image.network(
+                    service['image'] ?? service['imageUrl'] ?? '',
+                    height: 150,
+                    width: double.infinity,
+                    fit: BoxFit.cover,
+                    errorBuilder: (context, error, stackTrace) {
+                      return Container(
+                        height: 150,
+                        width: double.infinity,
+                        color: Colors.grey[300],
+                        child: const Icon(
+                          Icons.image_not_supported,
+                          color: Colors.grey,
+                        ),
+                      );
+                    },
+                  ),
           ),
           const SizedBox(height: 15),
           // Title

@@ -96,7 +96,7 @@ class MyApp extends StatelessWidget {
           onPrimary: Colors.white,
           onSecondary: Colors.white,
         ),
-        scaffoldBackgroundColor: const Color(0xFFFFF8E1),
+        scaffoldBackgroundColor: Colors.white,
         textTheme: GoogleFonts.poppinsTextTheme(),
         cardTheme: CardThemeData(
           elevation: 4,
@@ -173,10 +173,12 @@ class MyApp extends StatelessWidget {
                     if (snapshot.hasData) {
                       final user = snapshot.data!;
                       final email = user.email;
-                      
+
                       if (email != null) {
-                        final isAdmin = email.startsWith('admin') || email.startsWith('ad.blossom');
-                        
+                        final isAdmin =
+                            email.startsWith('admin') ||
+                            email.startsWith('ad.blossom');
+
                         // Scenario 1: Admin Portal (Web, no FORCE_ONBOARDING)
                         if (kIsWeb && !kForceOnboarding) {
                           if (!isAdmin) {
@@ -187,7 +189,7 @@ class MyApp extends StatelessWidget {
                           }
                           return const MainLayout();
                         }
-                        
+
                         // Scenario 2: Customer/Staff Portal (Mobile or Web with FORCE_ONBOARDING)
                         if (isAdmin) {
                           // Admin trying to access Customer/Staff App
@@ -195,12 +197,12 @@ class MyApp extends StatelessWidget {
                           FirebaseAuth.instance.signOut();
                           return const OnboardingScreen();
                         }
-                        
+
                         if (email.startsWith('staff')) {
                           return const StaffDashboard();
                         }
                       }
-                      
+
                       // Default to Customer Home for non-admin, non-staff users
                       return const CustomerHomeScreen();
                     }
