@@ -32,6 +32,8 @@ class _AddServiceScreenState extends State<AddServiceScreen> {
   Uint8List? _imageBytes;
   String? _existingImageUrl;
   String _selectedCategory = 'Body';
+  String _manualImageUrl = '';
+  bool _useManualUrl = false;
 
   @override
   void initState() {
@@ -96,6 +98,57 @@ class _AddServiceScreenState extends State<AddServiceScreen> {
     }
   }
 
+  Future<String?> _uploadImage() async {
+    // If using manual URL, return it directly
+    if (_useManualUrl) {
+      return _manualImageUrl.isNotEmpty ? _manualImageUrl : _existingImageUrl;
+    }
+
+    // Otherwise, try to upload file (but this will fail on free plan)
+    if (_pickedFile == null || _imageBytes == null) return _existingImageUrl;
+
+    try {
+      // Check if user is authenticated
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) {
+        throw Exception('User not authenticated. Please sign in again.');
+      }
+
+      final storageRef = FirebaseStorage.instance.ref().child(
+        'service_images/${DateTime.now().millisecondsSinceEpoch}_${_pickedFile!.name}',
+      );
+
+      // Use putData for cross-platform compatibility (Web & Mobile/Desktop)
+      // Set content type explicitly to speed up processing
+      final metadata = SettableMetadata(contentType: 'image/jpeg');
+
+      // Create upload task
+      final uploadTask = storageRef.putData(_imageBytes!, metadata);
+
+      // Monitor upload progress
+      uploadTask.snapshotEvents.listen((TaskSnapshot snapshot) {
+        debugPrint('Upload progress: ${snapshot.bytesTransferred}/${snapshot.totalBytes}');
+      });
+
+      // Wait for completion with timeout
+      await uploadTask.timeout(
+        const Duration(seconds: 60), // Increased timeout
+        onTimeout: () {
+          throw Exception(
+            'Upload timed out. Please check your internet connection and try again.',
+          );
+        },
+      );
+
+      final downloadUrl = await storageRef.getDownloadURL();
+      debugPrint('Upload successful: $downloadUrl');
+      return downloadUrl;
+    } catch (e) {
+      debugPrint('Upload error: $e');
+      throw Exception('Error uploading image: $e');
+    }
+  }
+
   @override
   void dispose() {
     _nameController.dispose();
@@ -145,6 +198,7 @@ class _AddServiceScreenState extends State<AddServiceScreen> {
           'price': price,
           'duration': duration,
           'time': duration,
+          'image': imageUrl, // Set both image and imageUrl for compatibility
           'imageUrl': imageUrl,
           if (_imageBytes != null) 'imageBase64': base64Encode(_imageBytes!),
           'updatedAt': ServerValue.timestamp,
@@ -179,6 +233,7 @@ class _AddServiceScreenState extends State<AddServiceScreen> {
           'price': price,
           'duration': duration,
           'time': duration,
+          'image': imageUrl, // Set both image and imageUrl for compatibility
           'imageUrl': imageUrl,
           if (_imageBytes != null) 'imageBase64': base64Encode(_imageBytes!),
           'category': _selectedCategory,
@@ -510,23 +565,154 @@ class _AddServiceScreenState extends State<AddServiceScreen> {
                   child: Column(
                     children: [
                       const SizedBox(height: 30), // Align with form top roughly
-                      Container(
-                        height: 250,
-                        width: double.infinity,
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFE5E0D0),
-                          borderRadius: BorderRadius.circular(24),
-                          image: _imageBytes != null
-                              ? DecorationImage(
-                                  image: MemoryImage(_imageBytes!),
-                                  fit: BoxFit.cover,
+
+                      // Toggle between file upload and manual URL
+                      Row(
+                        children: [
+                          const Text(
+                            'Upload File',
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.bold,
+                              color: Color(0xFF5D5343),
+                            ),
+                          ),
+                          Switch(
+                            value: _useManualUrl,
+                            onChanged: (value) {
+                              setState(() {
+                                _useManualUrl = value;
+                                if (value) {
+                                  _pickedFile = null;
+                                  _imageBytes = null;
+                                }
+                              });
+                            },
+                            activeColor: const Color(0xFF5D5343),
+                          ),
+                          const Text(
+                            'Manual URL',
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.bold,
+                              color: Color(0xFF5D5343),
+                            ),
+                          ),
+                        ],
+                      ),
+
+                      const SizedBox(height: 16),
+
+                      // Manual URL input field
+                      if (_useManualUrl) ...[
+                        TextField(
+                          onChanged: (value) {
+                            _manualImageUrl = value;
+                          },
+                          decoration: InputDecoration(
+                            hintText: 'Enter image URL...',
+                            filled: true,
+                            fillColor: const Color(0xFFE5E0D0),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: BorderSide.none,
+                            ),
+                            contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 12,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                      ],
+
+                      // Image preview/upload area
+                      GestureDetector(
+                        onTap: _useManualUrl ? null : _pickImage,
+                        child: Container(
+                          height: 200,
+                          width: double.infinity,
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFE5E0D0),
+                            borderRadius: BorderRadius.circular(24),
+                            image: _imageBytes != null
+                                ? DecorationImage(
+                                    image: MemoryImage(_imageBytes!),
+                                    fit: BoxFit.cover,
+                                  )
+                                : (_existingImageUrl != null
+                                      ? DecorationImage(
+                                          image: NetworkImage(
+                                            _existingImageUrl!,
+                                          ),
+                                          fit: BoxFit.cover,
+                                        )
+                                      : null),
+                          ),
+                          child: _isPickingImage
+                              ? const Center(
+                                  child: Column(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      CircularProgressIndicator(
+                                        color: Color(0xFF5D5343),
+                                      ),
+                                      SizedBox(height: 8),
+                                      Text(
+                                        'Processing...',
+                                        style: TextStyle(
+                                          color: Color(0xFF5D5343),
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
                                 )
-                              : (_existingImageUrl != null
-                                    ? DecorationImage(
-                                        image: NetworkImage(_existingImageUrl!),
-                                        fit: BoxFit.cover,
+                              : (_imageBytes == null &&
+                                        _existingImageUrl == null &&
+                                        !_useManualUrl
+                                    ? Column(
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.center,
+                                        children: const [
+                                          Icon(
+                                            Icons.cloud_upload_outlined,
+                                            size: 48,
+                                            color: Color(0xFF5D5343),
+                                          ),
+                                          SizedBox(height: 8),
+                                          Text(
+                                            'Click to upload image',
+                                            style: TextStyle(
+                                              color: Color(0xFF5D5343),
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                          ),
+                                        ],
                                       )
-                                    : null),
+                                    : _useManualUrl &&
+                                            _manualImageUrl.isEmpty &&
+                                            _existingImageUrl == null
+                                        ? Column(
+                                            mainAxisAlignment:
+                                                MainAxisAlignment.center,
+                                            children: const [
+                                              Icon(
+                                                Icons.link,
+                                                size: 48,
+                                                color: Color(0xFF5D5343),
+                                              ),
+                                              SizedBox(height: 8),
+                                              Text(
+                                                'Enter URL above',
+                                                style: TextStyle(
+                                                  color: Color(0xFF5D5343),
+                                                  fontWeight: FontWeight.bold,
+                                                ),
+                                              ),
+                                            ],
+                                          )
+                                        : null),
                         ),
                         child: (_imageBytes == null && _existingImageUrl == null
                             ? Column(
@@ -549,24 +735,23 @@ class _AddServiceScreenState extends State<AddServiceScreen> {
                               )
                             : null),
                       ),
+
                       const SizedBox(height: 16),
-                      Align(
-                        alignment: Alignment.centerLeft,
-                        child: OutlinedButton.icon(
-                          onPressed: _isSaving ? null : _pickLocalImage,
-                          icon: const Icon(Icons.photo_library),
-                          label: const Text('Pick Image (Local)'),
-                          style: OutlinedButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 16,
-                              vertical: 12,
-                            ),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
+
+                      // Warning text for manual upload
+                      if (!_useManualUrl) ...[
+                        const Text(
+                          '⚠️ Upload disabled on free plan',
+                          style: TextStyle(
+                            color: Colors.red,
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
                           ),
+                          textAlign: TextAlign.center,
                         ),
-                      ),
+                        const SizedBox(height: 8),
+                      ],
+
                       ElevatedButton(
                         onPressed: _isSaving ? null : _saveService,
                         style: ElevatedButton.styleFrom(

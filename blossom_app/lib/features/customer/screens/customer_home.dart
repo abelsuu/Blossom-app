@@ -29,7 +29,7 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
   @override
   void initState() {
     super.initState();
-    // Listen for auth state changes to ensure we have permission to seed
+   
     FirebaseAuth.instance.authStateChanges().listen((user) {
       if (user != null) {
         debugPrint('User authenticated: ${user.uid}. Checking catalog data...');

@@ -26,6 +26,7 @@ class _SkinAnalysisHistoryScreenState extends State<SkinAnalysisHistoryScreen> {
     }
   }
 
+  // UI Guard: If the user is not authenticated, show a login prompt
   @override
   Widget build(BuildContext context) {
     if (_user == null) {
@@ -72,19 +73,24 @@ class _SkinAnalysisHistoryScreenState extends State<SkinAnalysisHistoryScreen> {
           ),
         ),
       ),
+
+      // StreamBuilder reacts automatically whenever the database changes
       body: StreamBuilder<List<Map<String, dynamic>>>(
         stream: _historyStream,
         builder: (context, snapshot) {
+          // Handle Loading State
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
           }
 
+          // Handle Error State
           if (snapshot.hasError) {
             return Center(child: Text('Error: ${snapshot.error}'));
           }
 
           final history = snapshot.data ?? [];
 
+          // Handle Empty State: UI shown when user has no previous records
           if (history.isEmpty) {
             return Center(
               child: Column(
@@ -122,6 +128,7 @@ class _SkinAnalysisHistoryScreenState extends State<SkinAnalysisHistoryScreen> {
             );
           }
 
+          // Display List of History Items
           return ListView.builder(
             padding: const EdgeInsets.all(24),
             itemCount: history.length,
@@ -149,6 +156,8 @@ class _SkinAnalysisHistoryScreenState extends State<SkinAnalysisHistoryScreen> {
                   child: InkWell(
                     borderRadius: BorderRadius.circular(20),
                     onTap: () {
+                      
+                      // Navigate to the Result Screen to show full details of this specific entry
                       Navigator.push(
                         context,
                         MaterialPageRoute(

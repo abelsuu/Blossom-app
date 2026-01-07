@@ -229,59 +229,18 @@ class OnboardingPage extends StatelessWidget {
     return Stack(
       fit: StackFit.expand,
       children: [
-        (() {
-          final isAsset = imageUrl.startsWith('assets/');
-          if (isAsset) {
-            return Image.asset(
-              imageUrl,
-              fit: BoxFit.cover,
-              errorBuilder: (context, error, stackTrace) {
-                if (text.toLowerCase().contains('ai skin')) {
-                  return Image.asset(
-                    'assets/images/ai-skin-analysis.png',
-                    fit: BoxFit.cover,
-                    errorBuilder: (context, error, stackTrace) {
-                      return Container(
-                        color: const Color(0xFFFFF8E1),
-                        child: const Center(
-                          child: Icon(
-                            Icons.broken_image_rounded,
-                            color: Color(0xFFCFA6A6),
-                            size: 48,
-                          ),
-                        ),
-                      );
-                    },
-                  );
-                }
-                return Container(
-                  color: const Color(0xFFFFF8E1),
-                  child: const Center(
-                    child: Icon(
-                      Icons.broken_image_rounded,
-                      color: Color(0xFFCFA6A6),
-                      size: 48,
-                    ),
-                  ),
-                );
-              },
-            );
-          }
-          return Image.network(
-            imageUrl,
-            fit: BoxFit.cover,
-            loadingBuilder: (context, child, loadingProgress) {
-              if (loadingProgress == null) return child;
-              return Container(
-                color: const Color(0xFFFFF8E1),
-                child: Center(
-                  child: CircularProgressIndicator(
-                    value: loadingProgress.expectedTotalBytes != null
-                        ? loadingProgress.cumulativeBytesLoaded /
-                              loadingProgress.expectedTotalBytes!
-                        : null,
-                    color: const Color(0xFFCFA6A6),
-                  ),
+        // Background Image
+        Image.asset(
+          imageUrl,
+          fit: BoxFit.cover,
+          errorBuilder: (context, error, stackTrace) {
+            return Container(
+              color: const Color(0xFFFFF8E1), // Beige background
+              child: const Center(
+                child: Icon(
+                  Icons.broken_image_rounded,
+                  color: Color(0xFFCFA6A6), // Dusty Rose
+                  size: 48,
                 ),
               );
             },

@@ -15,7 +15,8 @@ class SkinAnalysisSavedScreen extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               const Spacer(),
-              // Success Icon
+              
+              //Success Icon Section
               Container(
                 padding: const EdgeInsets.all(40),
                 decoration: BoxDecoration(
@@ -29,7 +30,8 @@ class SkinAnalysisSavedScreen extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 40),
-              
+
+              //Text Content Section
               Text(
                 'Saved Successfully!',
                 style: Theme.of(context).textTheme.headlineMedium?.copyWith(
@@ -47,7 +49,8 @@ class SkinAnalysisSavedScreen extends StatelessWidget {
                 ),
               ),
               const Spacer(),
-              
+
+              //Navigation Button Section
               SizedBox(
                 width: double.infinity,
                 height: 56,
