@@ -1,51 +1,92 @@
-# Blossom App
+# Blossom App 🌸
 
-Blossom App is a cross-platform application for a beauty & wellness center, featuring:
-- **Customer App (Mobile):** For booking appointments, AI skin analysis, and loyalty rewards.
-- **Admin Portal (Web):** For managing bookings, staff, services, and users.
-- **Staff App (Mobile):** For managing schedules and appointments.
+A cross-platform Flutter application for a modern beauty & wellness center. This project demonstrates a complete ecosystem with three distinct user roles:
+
+1.  **Customer App (Mobile):** AI-powered skin analysis, booking management, and loyalty rewards.
+2.  **Admin Portal (Web):** Dashboard for managing staff, services, users, and business analytics.
+3.  **Staff App (Mobile):** Schedule management and appointment tracking.
 
 ---
 
-## 🚀 How to Run the Application
+## 🏗️ Project Architecture
 
-### 1. Customer / Staff App (Mobile) - First Time Setup
-To install and start the app on a new phone (or your own phone) for the first time:
+The project follows a **Feature-First** architecture for scalability and maintainability.
 
-1.  **Connect the Phone:** Plug your phone into the laptop via USB.
-2.  **Enable USB Debugging:**
-    *   Go to **Settings > About Phone**.
-    *   Tap **Build Number** 7 times to enable Developer Options.
-    *   Go back to **Settings > System > Developer Options**.
-    *   Turn on **USB Debugging**.
-3.  **Run the Installation Command:**
-    Open a terminal in the project folder (`blossom_app`) and run:
+### 📂 Directory Structure (`lib/`)
+*   **`main.dart`**: Entry point. Handles role-based routing (Admin vs. Customer vs. Staff) and Firebase initialization.
+*   **`features/`**: Contains all business logic, split by domain:
+    *   **`auth/`**: Authentication screens and logic.
+    *   **`customer/`**:
+        *   `facial_ai/`: Custom camera implementation and AI instruction logic.
+        *   `booking/`: Complex slot management and double-booking prevention.
+        *   `ai_skin_analysis/`: Logic for processing skin metrics.
+    *   **`admin/`**: Web-optimized screens for database management.
+    *   **`staff/`**: Logic for shift management and daily tasks.
+*   **`core/` & `common/`**: Shared widgets (Buttons, Dialogs) and constants.
 
-```bash
-flutter run
-```
+---
 
-#### Running on a Specific Device
-If you have multiple devices connected (e.g., your phone AND a Chrome browser), you need to specify which one to use.
+## 🚀 Key Features & Implementation
 
-1.  List available devices to find your **Device ID**:
+### 1. Smart Booking System
+*   **Location:** `features/customer/screens/booking/booking_screen.dart`
+*   **Logic:**
+    *   **Client-Side Filtering:** Fetches bookings and locally filters for "upcoming" slots to reduce database read costs.
+    *   **Conflict Prevention:** Checks `availability/$date/$time` nodes in Firebase before confirming a slot.
+    *   **Dynamic Time Slots:** Automatically disables past time slots based on the user's current device time.
+
+### 2. AI Skin Analysis
+*   **Location:** `features/customer/screens/facial_ai/` & `ai_skin_analysis/`
+*   **Workflow:**
+    1.  **Instruction Screen:** Guides user on lighting and positioning.
+    2.  **Image Capture:** Uses `image_picker` (with specific Web/Mobile handling).
+    3.  **Analysis:** (Mock/Integration) returns metrics for Acne, Sensitivity, and Elasticity.
+    4.  **Profile Update:** Automatically updates the user's profile in Firebase with new skin stats.
+
+### 3. Role-Based Authentication
+*   **Location:** `main.dart`
+*   **Logic:** Listens to the Firebase Auth Stream.
+    *   `email.startsWith('admin')` → Redirects to **Admin Web Portal**.
+    *   `email.startsWith('staff')` → Redirects to **Staff Dashboard**.
+    *   Others → Redirects to **Customer Home**.
+
+### 4. Real-Time Data Sync
+*   **Tech:** `StreamBuilder` + `Firebase Realtime Database`.
+*   **Benefit:** Updates to appointments, loyalty points, or staff schedules reflect instantly across all devices without pulling-to-refresh.
+
+---
+
+## 🛠 Tech Stack
+
+*   **Frontend:** Flutter (Dart)
+*   **Backend:** Firebase Realtime Database
+*   **Auth:** Firebase Authentication
+*   **State Management:** `setState` (local) + `Streams` (global data)
+
+---
+
+## 🔌 How to Run
+
+### 1. Customer / Staff App (Mobile)
+1.  Connect your Android device via USB.
+2.  Enable **USB Debugging** in Developer Options.
+3.  Run:
     ```bash
-    flutter devices
+    flutter run
     ```
-2.  Run with the specific ID (example ID: `53F0219509003796`):
-    ```bash
-    flutter run -d 53F0219509003796
-    ```
-    *(Replace `53F0219509003796` with your actual device ID).*
 
 ### 2. Admin Dashboard (Web)
-The Admin Portal is optimized for Web. To launch it in a separate Chrome instance:
-
+For the best experience, run the Admin portal in Chrome:
 ```bash
 flutter run -d chrome --web-port=5000
 ```
 
-*Note: The `--web-port=5000` flag is optional but recommended to keep a consistent testing address.*
+---
+
+## ⚙️ Backend Setup (Firebase)
+*   **No Local Server Required:** The app connects directly to the Google Cloud (Firebase).
+*   **Requirements:** Active Internet connection is mandatory for data fetching.
+*   **Persistence:** Mobile apps have offline persistence enabled for viewing cached data.
 
 ---
 
@@ -63,22 +104,3 @@ flutter run -d chrome --web-port=5000
 **Q: What do I need for it to work?**
 **A: Internet Connection.**
 Since the app connects to a cloud database (Firebase) to save bookings, fetch services, and perform AI analysis, **your phone must have an active internet connection (Wi-Fi or Mobile Data)**. It does **not** need to be on the same Wi-Fi as your laptop.
-
----
-
-## ⚙️ Background Processes & Setup
-
-The application relies on **Firebase** for its backend. No manual local server (like Node.js or Python) needs to be started on your laptop for the mobile app to work. The "backend" runs in the cloud (Google Cloud Platform).
-
-**Key Requirements:**
-1.  **Internet Access:** The device must be online.
-2.  **Firebase Configuration:** Ensure `google-services.json` (Android) and `GoogleService-Info.plist` (iOS) are present in the project (already configured).
-3.  **CORS (For Web):** If you are developing the Admin Web Portal and encounter image upload errors, ensure CORS is configured on your Firebase Storage bucket (already handled via `cors.json`).
-
----
-
-## 🛠 Troubleshooting
-
-*   **App stuck on "Syncing" or Loading:** Check your internet connection.
-*   **"Offline" status:** The app detects connection drops. Reconnect to Wi-Fi/Data.
-*   **Build Errors:** Run `flutter clean` and then `flutter pub get` to refresh dependencies.
