@@ -14,7 +14,7 @@ import 'package:blossom_app/features/admin/screens/main_layout.dart';
 
 const bool kForceOnboarding = bool.fromEnvironment(
   'FORCE_ONBOARDING',
-  defaultValue: false,
+  defaultValue: true,
 );
 
 void main() async {

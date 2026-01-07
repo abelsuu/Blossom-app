@@ -29,6 +29,7 @@ class _AddServiceScreenState extends State<AddServiceScreen> {
   final _priceController = TextEditingController();
   final _durationController = TextEditingController();
   bool _isSaving = false;
+  bool _isPickingImage = false;
   Uint8List? _imageBytes;
   String? _existingImageUrl;
   String _selectedCategory = 'Body';
@@ -70,14 +71,16 @@ class _AddServiceScreenState extends State<AddServiceScreen> {
     }
   }
 
-  // _uploadImage is no longer needed as upload happens in _pickImage via helper
-  Future<void> _pickLocalImage() async {
+  Future<void> _pickImage() async {
     try {
+      setState(() {
+        _isPickingImage = true;
+      });
       final picker = ImagePicker();
       final XFile? img = await picker.pickImage(
         source: ImageSource.gallery,
-        maxWidth: 1024,
-        maxHeight: 1024,
+        maxWidth: 800,
+        maxHeight: 800,
         imageQuality: 70,
       );
       if (img != null) {
@@ -95,57 +98,12 @@ class _AddServiceScreenState extends State<AddServiceScreen> {
           context,
         ).showSnackBar(SnackBar(content: Text('Failed to pick image: $e')));
       }
-    }
-  }
-
-  Future<String?> _uploadImage() async {
-    // If using manual URL, return it directly
-    if (_useManualUrl) {
-      return _manualImageUrl.isNotEmpty ? _manualImageUrl : _existingImageUrl;
-    }
-
-    // Otherwise, try to upload file (but this will fail on free plan)
-    if (_pickedFile == null || _imageBytes == null) return _existingImageUrl;
-
-    try {
-      // Check if user is authenticated
-      final user = FirebaseAuth.instance.currentUser;
-      if (user == null) {
-        throw Exception('User not authenticated. Please sign in again.');
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isPickingImage = false;
+        });
       }
-
-      final storageRef = FirebaseStorage.instance.ref().child(
-        'service_images/${DateTime.now().millisecondsSinceEpoch}_${_pickedFile!.name}',
-      );
-
-      // Use putData for cross-platform compatibility (Web & Mobile/Desktop)
-      // Set content type explicitly to speed up processing
-      final metadata = SettableMetadata(contentType: 'image/jpeg');
-
-      // Create upload task
-      final uploadTask = storageRef.putData(_imageBytes!, metadata);
-
-      // Monitor upload progress
-      uploadTask.snapshotEvents.listen((TaskSnapshot snapshot) {
-        debugPrint('Upload progress: ${snapshot.bytesTransferred}/${snapshot.totalBytes}');
-      });
-
-      // Wait for completion with timeout
-      await uploadTask.timeout(
-        const Duration(seconds: 60), // Increased timeout
-        onTimeout: () {
-          throw Exception(
-            'Upload timed out. Please check your internet connection and try again.',
-          );
-        },
-      );
-
-      final downloadUrl = await storageRef.getDownloadURL();
-      debugPrint('Upload successful: $downloadUrl');
-      return downloadUrl;
-    } catch (e) {
-      debugPrint('Upload error: $e');
-      throw Exception('Error uploading image: $e');
     }
   }
 
@@ -565,7 +523,6 @@ class _AddServiceScreenState extends State<AddServiceScreen> {
                   child: Column(
                     children: [
                       const SizedBox(height: 30), // Align with form top roughly
-
                       // Toggle between file upload and manual URL
                       Row(
                         children: [
@@ -583,12 +540,12 @@ class _AddServiceScreenState extends State<AddServiceScreen> {
                               setState(() {
                                 _useManualUrl = value;
                                 if (value) {
-                                  _pickedFile = null;
                                   _imageBytes = null;
                                 }
                               });
                             },
-                            activeColor: const Color(0xFF5D5343),
+                            activeTrackColor: const Color(0xFF5D5343),
+                            activeThumbColor: Colors.white,
                           ),
                           const Text(
                             'Manual URL',
@@ -691,49 +648,29 @@ class _AddServiceScreenState extends State<AddServiceScreen> {
                                         ],
                                       )
                                     : _useManualUrl &&
-                                            _manualImageUrl.isEmpty &&
-                                            _existingImageUrl == null
-                                        ? Column(
-                                            mainAxisAlignment:
-                                                MainAxisAlignment.center,
-                                            children: const [
-                                              Icon(
-                                                Icons.link,
-                                                size: 48,
-                                                color: Color(0xFF5D5343),
-                                              ),
-                                              SizedBox(height: 8),
-                                              Text(
-                                                'Enter URL above',
-                                                style: TextStyle(
-                                                  color: Color(0xFF5D5343),
-                                                  fontWeight: FontWeight.bold,
-                                                ),
-                                              ),
-                                            ],
-                                          )
-                                        : null),
+                                          _manualImageUrl.isEmpty &&
+                                          _existingImageUrl == null
+                                    ? Column(
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.center,
+                                        children: const [
+                                          Icon(
+                                            Icons.link,
+                                            size: 48,
+                                            color: Color(0xFF5D5343),
+                                          ),
+                                          SizedBox(height: 8),
+                                          Text(
+                                            'Enter URL above',
+                                            style: TextStyle(
+                                              color: Color(0xFF5D5343),
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                          ),
+                                        ],
+                                      )
+                                    : null),
                         ),
-                        child: (_imageBytes == null && _existingImageUrl == null
-                            ? Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: const [
-                                  Icon(
-                                    Icons.cloud_upload_outlined,
-                                    size: 64,
-                                    color: Color(0xFF5D5343),
-                                  ),
-                                  SizedBox(height: 8),
-                                  Text(
-                                    'No image selected',
-                                    style: TextStyle(
-                                      color: Color(0xFF5D5343),
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                ],
-                              )
-                            : null),
                       ),
 
                       const SizedBox(height: 16),

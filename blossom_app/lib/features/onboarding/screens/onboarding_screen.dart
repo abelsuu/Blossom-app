@@ -230,58 +230,7 @@ class OnboardingPage extends StatelessWidget {
       fit: StackFit.expand,
       children: [
         // Background Image
-        Image.asset(
-          imageUrl,
-          fit: BoxFit.cover,
-          errorBuilder: (context, error, stackTrace) {
-            return Container(
-              color: const Color(0xFFFFF8E1), // Beige background
-              child: const Center(
-                child: Icon(
-                  Icons.broken_image_rounded,
-                  color: Color(0xFFCFA6A6), // Dusty Rose
-                  size: 48,
-                ),
-              );
-            },
-            errorBuilder: (context, error, stackTrace) {
-              if (text.toLowerCase().contains('ai skin')) {
-                return Image.asset(
-                  'assets/images/ai-skin-analysis.png',
-                  fit: BoxFit.cover,
-                  errorBuilder: (context, error, stackTrace) {
-                    return Container(
-                      color: const Color(0xFFFFF8E1),
-                      child: const Center(
-                        child: Icon(
-                          Icons.broken_image_rounded,
-                          color: Color(0xFFCFA6A6),
-                          size: 48,
-                        ),
-                      ),
-                    );
-                  },
-                );
-              }
-              return Image.network(
-                fallbackUrl,
-                fit: BoxFit.cover,
-                errorBuilder: (context, error, stackTrace) {
-                  return Container(
-                    color: const Color(0xFFFFF8E1),
-                    child: const Center(
-                      child: Icon(
-                        Icons.broken_image_rounded,
-                        color: Color(0xFFCFA6A6),
-                        size: 48,
-                      ),
-                    ),
-                  );
-                },
-              );
-            },
-          );
-        }()),
+        _buildImage(fallbackUrl),
 
         Container(
           decoration: BoxDecoration(
@@ -311,6 +260,77 @@ class OnboardingPage extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildImage(String fallbackUrl) {
+    if (imageUrl.startsWith('assets/')) {
+      return Image.asset(
+        imageUrl,
+        fit: BoxFit.cover,
+        errorBuilder: (context, error, stackTrace) {
+          // Fallback for asset failure
+          return _buildFallbackImage(fallbackUrl);
+        },
+      );
+    } else {
+      return Image.network(
+        imageUrl,
+        fit: BoxFit.cover,
+        loadingBuilder: (context, child, loadingProgress) {
+          if (loadingProgress == null) return child;
+          return Container(
+            color: const Color(0xFFFFF8E1),
+            child: Center(
+              child: CircularProgressIndicator(
+                value: loadingProgress.expectedTotalBytes != null
+                    ? loadingProgress.cumulativeBytesLoaded /
+                          loadingProgress.expectedTotalBytes!
+                    : null,
+                color: const Color(0xFFCFA6A6),
+              ),
+            ),
+          );
+        },
+        errorBuilder: (context, error, stackTrace) {
+          return _buildFallbackImage(fallbackUrl);
+        },
+      );
+    }
+  }
+
+  Widget _buildFallbackImage(String fallbackUrl) {
+    // Specific check for AI Skin Analysis to force local asset fallback
+    if (text.toLowerCase().contains('ai skin')) {
+      return Image.asset(
+        'assets/images/ai-skin-analysis.png',
+        fit: BoxFit.cover,
+        errorBuilder: (context, error, stackTrace) {
+          return _buildErrorPlaceholder();
+        },
+      );
+    }
+
+    // Generic Network Fallback
+    return Image.network(
+      fallbackUrl,
+      fit: BoxFit.cover,
+      errorBuilder: (context, error, stackTrace) {
+        return _buildErrorPlaceholder();
+      },
+    );
+  }
+
+  Widget _buildErrorPlaceholder() {
+    return Container(
+      color: const Color(0xFFFFF8E1),
+      child: const Center(
+        child: Icon(
+          Icons.broken_image_rounded,
+          color: Color(0xFFCFA6A6),
+          size: 48,
+        ),
+      ),
     );
   }
 
