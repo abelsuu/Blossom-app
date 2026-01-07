@@ -1,9 +1,9 @@
 import 'dart:typed_data';
+import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_database/firebase_database.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:firebase_storage/firebase_storage.dart';
 
 class AddServiceScreen extends StatefulWidget {
   final VoidCallback onSave;
@@ -29,8 +29,6 @@ class _AddServiceScreenState extends State<AddServiceScreen> {
   final _priceController = TextEditingController();
   final _durationController = TextEditingController();
   bool _isSaving = false;
-  bool _isPickingImage = false;
-  XFile? _pickedFile;
   Uint8List? _imageBytes;
   String? _existingImageUrl;
   String _selectedCategory = 'Body';
@@ -44,90 +42,57 @@ class _AddServiceScreenState extends State<AddServiceScreen> {
     _priceController.text = data['price']?.toString() ?? '';
     _durationController.text = data['duration'] ?? '';
     _existingImageUrl = data['imageUrl'];
+    final imageBase64 = data['imageBase64'] as String?;
+    if (imageBase64 != null && imageBase64.isNotEmpty) {
+      try {
+        _imageBytes = base64Decode(imageBase64);
+      } catch (_) {
+        _imageBytes = null;
+      }
+    }
+
+    final validCategories = ['Body', 'Facials', 'Beauty', 'General'];
     final initialCat = (data['category'] ?? '').toString().trim();
-    if (initialCat.isNotEmpty) {
+
+    if (initialCat.isNotEmpty && validCategories.contains(initialCat)) {
       _selectedCategory = initialCat;
     } else {
       // Derive from serviceId path if available (e.g., "Body/<key>")
       final idPath = (widget.serviceId ?? '').toString();
       if (idPath.contains('/')) {
-        _selectedCategory = idPath.split('/').first;
+        final derived = idPath.split('/').first;
+        if (validCategories.contains(derived)) {
+          _selectedCategory = derived;
+        }
       }
     }
   }
 
-  Future<void> _pickImage() async {
-    // Prevent multiple clicks
-    if (_isPickingImage) return;
-
-    final ImagePicker picker = ImagePicker();
+  // _uploadImage is no longer needed as upload happens in _pickImage via helper
+  Future<void> _pickLocalImage() async {
     try {
-      // Don't set _isPickingImage to true here, as pickImage is a UI blocking operation on some platforms
-      // and we want to avoid UI jumps. We only need the loader when we are processing the result.
-
-      final XFile? image = await picker.pickImage(
+      final picker = ImagePicker();
+      final XFile? img = await picker.pickImage(
         source: ImageSource.gallery,
-        // Re-enabled compression for faster uploads
-        maxWidth: 500,
-        imageQuality: 60,
+        maxWidth: 1024,
+        maxHeight: 1024,
+        imageQuality: 70,
       );
-
-      if (image != null) {
-        setState(() {
-          _isPickingImage =
-              true; // Show loader only when we actually have an image to process
-        });
-
-        final bytes = await image.readAsBytes();
-
+      if (img != null) {
+        final bytes = await img.readAsBytes();
         if (mounted) {
           setState(() {
-            _pickedFile = image;
             _imageBytes = bytes;
-            _isPickingImage = false;
+            _existingImageUrl = null;
           });
         }
       }
     } catch (e) {
       if (mounted) {
-        setState(() {
-          _isPickingImage = false;
-        });
         ScaffoldMessenger.of(
           context,
-        ).showSnackBar(SnackBar(content: Text('Error picking image: $e')));
+        ).showSnackBar(SnackBar(content: Text('Failed to pick image: $e')));
       }
-    }
-  }
-
-  Future<String?> _uploadImage() async {
-    if (_pickedFile == null || _imageBytes == null) return _existingImageUrl;
-
-    try {
-      final storageRef = FirebaseStorage.instance.ref().child(
-        'service_images/${DateTime.now().millisecondsSinceEpoch}_${_pickedFile!.name}',
-      );
-
-      // Use putData for cross-platform compatibility (Web & Mobile/Desktop)
-      // Set content type explicitly to speed up processing
-      final metadata = SettableMetadata(contentType: 'image/jpeg');
-
-      // Create upload task
-      final uploadTask = storageRef.putData(_imageBytes!, metadata);
-
-      // Wait for completion with timeout
-      await uploadTask.timeout(
-        const Duration(seconds: 45),
-        onTimeout: () {
-          throw Exception(
-            'Upload timed out. Please check your internet connection and try again.',
-          );
-        },
-      );
-
-      return await storageRef.getDownloadURL();
-    } catch (e) {
-      throw Exception('Error uploading image: $e');
     }
   }
 
@@ -169,7 +134,7 @@ class _AddServiceScreenState extends State<AddServiceScreen> {
     });
 
     try {
-      final imageUrl = await _uploadImage();
+      final imageUrl = _existingImageUrl;
 
       if (widget.serviceId != null) {
         // Edit existing service
@@ -181,6 +146,7 @@ class _AddServiceScreenState extends State<AddServiceScreen> {
           'duration': duration,
           'time': duration,
           'imageUrl': imageUrl,
+          if (_imageBytes != null) 'imageBase64': base64Encode(_imageBytes!),
           'updatedAt': ServerValue.timestamp,
           'category': _selectedCategory,
         };
@@ -214,6 +180,7 @@ class _AddServiceScreenState extends State<AddServiceScreen> {
           'duration': duration,
           'time': duration,
           'imageUrl': imageUrl,
+          if (_imageBytes != null) 'imageBase64': base64Encode(_imageBytes!),
           'category': _selectedCategory,
           'createdAt': ServerValue.timestamp,
         });
@@ -305,7 +272,7 @@ class _AddServiceScreenState extends State<AddServiceScreen> {
           Align(
             alignment: Alignment.centerRight,
             child: ElevatedButton(
-              onPressed: (_isSaving || _isPickingImage) ? null : _saveService,
+              onPressed: _isSaving ? null : _saveService,
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFF5D5343), // Dark Brown
                 foregroundColor: Colors.white,
@@ -543,72 +510,63 @@ class _AddServiceScreenState extends State<AddServiceScreen> {
                   child: Column(
                     children: [
                       const SizedBox(height: 30), // Align with form top roughly
-                      GestureDetector(
-                        onTap: _pickImage,
-                        child: Container(
-                          height: 250,
-                          width: double.infinity,
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFE5E0D0),
-                            borderRadius: BorderRadius.circular(24),
-                            image: _imageBytes != null
-                                ? DecorationImage(
-                                    image: MemoryImage(_imageBytes!),
-                                    fit: BoxFit.cover,
-                                  )
-                                : (_existingImageUrl != null
-                                      ? DecorationImage(
-                                          image: NetworkImage(
-                                            _existingImageUrl!,
-                                          ),
-                                          fit: BoxFit.cover,
-                                        )
-                                      : null),
-                          ),
-                          child: _isPickingImage
-                              ? const Center(
-                                  child: Column(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      CircularProgressIndicator(
-                                        color: Color(0xFF5D5343),
-                                      ),
-                                      SizedBox(height: 8),
-                                      Text(
-                                        'Processing...',
-                                        style: TextStyle(
-                                          color: Color(0xFF5D5343),
-                                          fontWeight: FontWeight.bold,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
+                      Container(
+                        height: 250,
+                        width: double.infinity,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFE5E0D0),
+                          borderRadius: BorderRadius.circular(24),
+                          image: _imageBytes != null
+                              ? DecorationImage(
+                                  image: MemoryImage(_imageBytes!),
+                                  fit: BoxFit.cover,
                                 )
-                              : (_imageBytes == null &&
-                                        _existingImageUrl == null
-                                    ? Column(
-                                        mainAxisAlignment:
-                                            MainAxisAlignment.center,
-                                        children: const [
-                                          Icon(
-                                            Icons.cloud_upload_outlined,
-                                            size: 64,
-                                            color: Color(0xFF5D5343),
-                                          ),
-                                          SizedBox(height: 8),
-                                          Text(
-                                            'Click to upload image',
-                                            style: TextStyle(
-                                              color: Color(0xFF5D5343),
-                                              fontWeight: FontWeight.bold,
-                                            ),
-                                          ),
-                                        ],
+                              : (_existingImageUrl != null
+                                    ? DecorationImage(
+                                        image: NetworkImage(_existingImageUrl!),
+                                        fit: BoxFit.cover,
                                       )
                                     : null),
                         ),
+                        child: (_imageBytes == null && _existingImageUrl == null
+                            ? Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: const [
+                                  Icon(
+                                    Icons.cloud_upload_outlined,
+                                    size: 64,
+                                    color: Color(0xFF5D5343),
+                                  ),
+                                  SizedBox(height: 8),
+                                  Text(
+                                    'No image selected',
+                                    style: TextStyle(
+                                      color: Color(0xFF5D5343),
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ],
+                              )
+                            : null),
                       ),
                       const SizedBox(height: 16),
+                      Align(
+                        alignment: Alignment.centerLeft,
+                        child: OutlinedButton.icon(
+                          onPressed: _isSaving ? null : _pickLocalImage,
+                          icon: const Icon(Icons.photo_library),
+                          label: const Text('Pick Image (Local)'),
+                          style: OutlinedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 12,
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                        ),
+                      ),
                       ElevatedButton(
                         onPressed: _isSaving ? null : _saveService,
                         style: ElevatedButton.styleFrom(

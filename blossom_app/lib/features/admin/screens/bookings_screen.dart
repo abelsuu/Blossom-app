@@ -108,6 +108,7 @@ class _BookingsScreenState extends State<BookingsScreen> {
         },
       );
       if (picked != null) {
+        if (!mounted) return;
         // Format: HH:MM AM/PM
         final localizations = MaterialLocalizations.of(context);
         final formatted = localizations.formatTimeOfDay(

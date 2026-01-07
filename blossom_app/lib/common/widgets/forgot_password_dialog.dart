@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 void showForgotPasswordDialog(BuildContext context, {String? initialEmail}) {
   final emailController = TextEditingController(text: initialEmail);
@@ -54,31 +55,42 @@ void showForgotPasswordDialog(BuildContext context, {String? initialEmail}) {
                   const Center(child: CircularProgressIndicator()),
             );
 
-            // Simulate delay
-            await Future.delayed(const Duration(seconds: 2));
+            String? errorMessage;
+            try {
+              await FirebaseAuth.instance.sendPasswordResetEmail(email: email);
+            } on FirebaseAuthException catch (e) {
+              errorMessage = e.message ?? 'Failed to send reset email';
+            } catch (e) {
+              errorMessage = 'Failed to send reset email: $e';
+            }
 
             if (context.mounted) {
               // Close loading
               Navigator.pop(context);
-              // Close input dialog
-              Navigator.pop(context);
-
-              // Show success
-              showDialog(
-                context: context,
-                builder: (context) => AlertDialog(
-                  title: const Text('Email Sent'),
-                  content: Text(
-                    'Email sent! Check Inbox & Spam folder for $email',
-                  ),
-                  actions: [
-                    TextButton(
-                      onPressed: () => Navigator.pop(context),
-                      child: const Text('OK'),
+              if (errorMessage == null) {
+                // Close input dialog
+                Navigator.pop(context);
+                // Show standardized success
+                showDialog(
+                  context: context,
+                  builder: (context) => AlertDialog(
+                    title: const Text('Email Sent'),
+                    content: Text(
+                      'Email sent! Check Inbox & Spam folder for $email',
                     ),
-                  ],
-                ),
-              );
+                    actions: [
+                      TextButton(
+                        onPressed: () => Navigator.pop(context),
+                        child: const Text('OK'),
+                      ),
+                    ],
+                  ),
+                );
+              } else {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text(errorMessage)),
+                );
+              }
             }
           },
           style: ElevatedButton.styleFrom(

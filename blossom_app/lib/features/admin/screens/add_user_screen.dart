@@ -410,30 +410,29 @@ class _AddUserScreenState extends State<AddUserScreen> {
                                 );
                                 return;
                               }
+                              final messenger = ScaffoldMessenger.of(context);
                               try {
                                 await FirebaseAuth.instance
                                     .sendPasswordResetEmail(
                                       email: _emailController.text.trim(),
                                     );
-                                if (mounted) {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(
-                                      content: Text(
-                                        'Email sent! Check Inbox & Spam folder for ${_emailController.text}',
-                                      ),
+                                if (!mounted) return;
+                                messenger.showSnackBar(
+                                  SnackBar(
+                                    content: Text(
+                                      'Email sent! Check Inbox & Spam folder for ${_emailController.text}',
                                     ),
-                                  );
-                                }
+                                  ),
+                                );
                               } catch (e) {
-                                if (mounted) {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(
-                                      content: Text(
-                                        'Failed to send reset email: $e',
-                                      ),
+                                if (!mounted) return;
+                                messenger.showSnackBar(
+                                  SnackBar(
+                                    content: Text(
+                                      'Failed to send reset email: $e',
                                     ),
-                                  );
-                                }
+                                  ),
+                                );
                               }
                             },
                             icon: const Icon(Icons.email_outlined),

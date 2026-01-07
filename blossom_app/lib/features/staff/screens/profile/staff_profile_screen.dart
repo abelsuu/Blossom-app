@@ -639,12 +639,15 @@ class _StaffProfileScreenState extends State<StaffProfileScreen> {
 
   Future<void> _pickProfilePhoto() async {
     try {
-      final XFile? photo = await _picker.pickImage(source: ImageSource.gallery);
-      if (photo != null) {
-        final bytes = await photo.readAsBytes();
-        setState(() {
-          _photoBytes = bytes;
-        });
+      final image = await _picker.pickImage(source: ImageSource.gallery);
+      if (image != null) {
+        final bytes = await image.readAsBytes();
+        if (mounted) {
+          setState(() {
+            _photoBytes = bytes;
+            _photoUrlController.text = '';
+          });
+        }
       }
     } catch (e) {
       if (mounted) {

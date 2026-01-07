@@ -70,15 +70,17 @@ class _TextInputDialogState extends State<TextInputDialog> {
               : () async {
                   if (_controller.text.trim().isNotEmpty) {
                     setState(() => _isLoading = true);
+                    final navigator = Navigator.of(context);
+                    final messenger = ScaffoldMessenger.of(context);
                     try {
                       await widget.onConfirm(_controller.text.trim());
                       if (!mounted) return;
-                      Navigator.pop(context);
+                      navigator.pop();
                     } catch (e) {
                       if (!mounted) return;
-                      ScaffoldMessenger.of(
-                        context,
-                      ).showSnackBar(SnackBar(content: Text('Error: $e')));
+                      messenger.showSnackBar(
+                        SnackBar(content: Text('Error: $e')),
+                      );
                       setState(() => _isLoading = false);
                     }
                   }

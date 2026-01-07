@@ -47,8 +47,9 @@ class _AddStaffScreenState extends State<AddStaffScreen> {
       final address = widget.initialData!['address'] ?? '';
       final parts = address.toString().split(', ');
       if (parts.isNotEmpty) _address1Controller.text = parts[0];
-      if (parts.length > 1)
+      if (parts.length > 1) {
         _address2Controller.text = parts.sublist(1).join(', ');
+      }
     }
   }
 

@@ -1,7 +1,6 @@
 import 'package:blossom_app/features/customer/services/promotions_service.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:firebase_storage/firebase_storage.dart';
 import 'package:intl/intl.dart';
 import 'dart:typed_data';
 
@@ -19,7 +18,6 @@ class _MarketingScreenState extends State<MarketingScreen> {
   final _treatmentsController = TextEditingController();
   DateTime? _validUntil;
   String? _uploadedImageUrl;
-  bool _isUploading = false;
 
   int _selectedThemeIndex = 0;
   int _selectedImageIndex = 0;
@@ -201,53 +199,6 @@ class _MarketingScreenState extends State<MarketingScreen> {
         ],
       ),
     );
-  }
-
-  Future<void> _pickAndUploadImage() async {
-    final picker = ImagePicker();
-    final XFile? image = await picker.pickImage(source: ImageSource.gallery);
-
-    if (image == null) return;
-
-    setState(() {
-      _isUploading = true;
-    });
-
-    try {
-      // Create a reference to the location you want to upload to in firebase
-      final storageRef = FirebaseStorage.instance.ref().child(
-        'promotions/${DateTime.now().millisecondsSinceEpoch}_${image.name}',
-      );
-
-      final metadata = SettableMetadata(
-        contentType: image.mimeType ?? 'image/jpeg',
-      );
-
-      // Upload the file
-      final data = await image.readAsBytes();
-      await storageRef.putData(data, metadata);
-
-      // Get the download URL
-      final downloadUrl = await storageRef.getDownloadURL();
-
-      setState(() {
-        _uploadedImageUrl = downloadUrl;
-        _selectedImageIndex = -1; // Deselect presets
-      });
-    } catch (e) {
-      debugPrint('Error uploading image: $e');
-      if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Error uploading image: $e')));
-      }
-    } finally {
-      if (mounted) {
-        setState(() {
-          _isUploading = false;
-        });
-      }
-    }
   }
 
   @override
@@ -597,35 +548,7 @@ class _MarketingScreenState extends State<MarketingScreen> {
                             ),
                           ),
                           const SizedBox(height: 12),
-                          OutlinedButton.icon(
-                            onPressed: _isUploading
-                                ? null
-                                : _pickAndUploadImage,
-                            icon: _isUploading
-                                ? const SizedBox(
-                                    width: 20,
-                                    height: 20,
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2,
-                                    ),
-                                  )
-                                : const Icon(Icons.upload_file),
-                            label: Text(
-                              _isUploading
-                                  ? 'Uploading...'
-                                  : 'Upload Custom Image',
-                            ),
-                            style: OutlinedButton.styleFrom(
-                              padding: const EdgeInsets.symmetric(
-                                vertical: 12,
-                                horizontal: 16,
-                              ),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                            ),
-                          ),
-                          const SizedBox(height: 12),
+                          // Custom upload removed as per request
                           SizedBox(
                             height: 80,
                             child: ListView.separated(

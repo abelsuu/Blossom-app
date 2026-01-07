@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:firebase_database/firebase_database.dart';
 import 'package:blossom_app/features/auth/screens/login_screen.dart';
 import 'package:blossom_app/features/customer/screens/signup/signup_basic_info_screen.dart';
 
@@ -14,33 +15,83 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   final PageController _pageController = PageController();
   int _currentPage = 0;
 
-  final List<Map<String, String>> _onboardingData = [
+  List<Map<String, String>> _onboardingData = [
     {
       "text": "SPA only for\nWomen",
       "image":
-          "assets/images/spa-for-women.png", // Placeholder: Spa
+          "https://images.unsplash.com/photo-1544161515-4ab6ce6db874?q=80&w=1200&auto=format&fit=crop",
     },
     {
       "text": "Providing you with\nAI Skin Analysis\nFeature",
-      "image":
-          "assets/images/ai-skin-analysis.png", // Placeholder: Skin/Face
+      "image": "assets/images/ai-skin-analysis.png",
     },
     {
       "text": "Friendly Staffs\nto Serve you",
       "image":
-          "assets/images/pic-staff.jpg", // Placeholder: Staff
+          "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?q=80&w=1200&auto=format&fit=crop",
     },
     {
       "text": "Comfortable\nSpace",
       "image":
-          "assets/images/ruang.jpg", // Placeholder: Interior
+          "https://images.unsplash.com/photo-1519710164239-da123dc03ef4?q=80&w=1200&auto=format&fit=crop",
     },
     {
       "text": "Affordable\nServices",
       "image":
-          "assets/images/service.jpg", // Placeholder: Massage/Service
+          "https://images.unsplash.com/photo-1519823551278-64ac92734fb1?q=80&w=1200&auto=format&fit=crop",
     },
   ];
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchOnboardingConfig();
+  }
+
+  Future<void> _fetchOnboardingConfig() async {
+    try {
+      final event = await FirebaseDatabase.instance
+          .ref('app_config/onboarding')
+          .once();
+      final value = event.snapshot.value;
+      if (value is List) {
+        final parsed = <Map<String, String>>[];
+        for (final item in value) {
+          if (item is Map) {
+            final text = item['text']?.toString() ?? '';
+            final image =
+                item['imageUrl']?.toString() ?? item['image']?.toString() ?? '';
+            if (text.isNotEmpty && image.isNotEmpty) {
+              parsed.add({"text": text, "image": image});
+            }
+          }
+        }
+        if (parsed.isNotEmpty && mounted) {
+          setState(() {
+            _onboardingData = parsed;
+          });
+        }
+      } else if (value is Map) {
+        final entries = value.values;
+        final parsed = <Map<String, String>>[];
+        for (final item in entries) {
+          if (item is Map) {
+            final text = item['text']?.toString() ?? '';
+            final image =
+                item['imageUrl']?.toString() ?? item['image']?.toString() ?? '';
+            if (text.isNotEmpty && image.isNotEmpty) {
+              parsed.add({"text": text, "image": image});
+            }
+          }
+        }
+        if (parsed.isNotEmpty && mounted) {
+          setState(() {
+            _onboardingData = parsed;
+          });
+        }
+      }
+    } catch (_) {}
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -174,43 +225,105 @@ class OnboardingPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final fallbackUrl = _fallbackUrlForText(text);
     return Stack(
       fit: StackFit.expand,
       children: [
-        // Background Image
-        Image.network(
-          imageUrl,
-          fit: BoxFit.cover,
-          loadingBuilder: (context, child, loadingProgress) {
-            if (loadingProgress == null) return child;
-            return Container(
-              color: const Color(0xFFFFF8E1), // Beige background
-              child: Center(
-                child: CircularProgressIndicator(
-                  value: loadingProgress.expectedTotalBytes != null
-                      ? loadingProgress.cumulativeBytesLoaded /
-                            loadingProgress.expectedTotalBytes!
-                      : null,
-                  color: const Color(0xFFCFA6A6), // Dusty Rose
-                ),
-              ),
+        (() {
+          final isAsset = imageUrl.startsWith('assets/');
+          if (isAsset) {
+            return Image.asset(
+              imageUrl,
+              fit: BoxFit.cover,
+              errorBuilder: (context, error, stackTrace) {
+                if (text.toLowerCase().contains('ai skin')) {
+                  return Image.asset(
+                    'assets/images/ai-skin-analysis.png',
+                    fit: BoxFit.cover,
+                    errorBuilder: (context, error, stackTrace) {
+                      return Container(
+                        color: const Color(0xFFFFF8E1),
+                        child: const Center(
+                          child: Icon(
+                            Icons.broken_image_rounded,
+                            color: Color(0xFFCFA6A6),
+                            size: 48,
+                          ),
+                        ),
+                      );
+                    },
+                  );
+                }
+                return Container(
+                  color: const Color(0xFFFFF8E1),
+                  child: const Center(
+                    child: Icon(
+                      Icons.broken_image_rounded,
+                      color: Color(0xFFCFA6A6),
+                      size: 48,
+                    ),
+                  ),
+                );
+              },
             );
-          },
-          errorBuilder: (context, error, stackTrace) {
-            return Container(
-              color: const Color(0xFFFFF8E1), // Beige background
-              child: const Center(
-                child: Icon(
-                  Icons.broken_image_rounded,
-                  color: Color(0xFFCFA6A6), // Dusty Rose
-                  size: 48,
+          }
+          return Image.network(
+            imageUrl,
+            fit: BoxFit.cover,
+            loadingBuilder: (context, child, loadingProgress) {
+              if (loadingProgress == null) return child;
+              return Container(
+                color: const Color(0xFFFFF8E1),
+                child: Center(
+                  child: CircularProgressIndicator(
+                    value: loadingProgress.expectedTotalBytes != null
+                        ? loadingProgress.cumulativeBytesLoaded /
+                              loadingProgress.expectedTotalBytes!
+                        : null,
+                    color: const Color(0xFFCFA6A6),
+                  ),
                 ),
-              ),
-            );
-          },
-        ),
+              );
+            },
+            errorBuilder: (context, error, stackTrace) {
+              if (text.toLowerCase().contains('ai skin')) {
+                return Image.asset(
+                  'assets/images/ai-skin-analysis.png',
+                  fit: BoxFit.cover,
+                  errorBuilder: (context, error, stackTrace) {
+                    return Container(
+                      color: const Color(0xFFFFF8E1),
+                      child: const Center(
+                        child: Icon(
+                          Icons.broken_image_rounded,
+                          color: Color(0xFFCFA6A6),
+                          size: 48,
+                        ),
+                      ),
+                    );
+                  },
+                );
+              }
+              return Image.network(
+                fallbackUrl,
+                fit: BoxFit.cover,
+                errorBuilder: (context, error, stackTrace) {
+                  return Container(
+                    color: const Color(0xFFFFF8E1),
+                    child: const Center(
+                      child: Icon(
+                        Icons.broken_image_rounded,
+                        color: Color(0xFFCFA6A6),
+                        size: 48,
+                      ),
+                    ),
+                  );
+                },
+              );
+            },
+          );
+        }()),
 
-        // Dark Overlay
         Container(
           decoration: BoxDecoration(
             gradient: LinearGradient(
@@ -224,9 +337,8 @@ class OnboardingPage extends StatelessWidget {
           ),
         ),
 
-        // Text Content
         Positioned(
-          bottom: 160, // Above buttons and indicators
+          bottom: 160,
           left: 20,
           right: 20,
           child: Text(
@@ -241,5 +353,22 @@ class OnboardingPage extends StatelessWidget {
         ),
       ],
     );
+  }
+
+  String _fallbackUrlForText(String t) {
+    final lower = t.toLowerCase();
+    if (lower.contains('ai skin')) {
+      return 'https://images.unsplash.com/photo-1505167919709-1983dffec2fe?ixlib=rb-4.0.3&auto=format&fit=crop&w=1200&q=80';
+    }
+    if (lower.contains('friendly staffs')) {
+      return 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?ixlib=rb-4.0.3&auto=format&fit=crop&w=1200&q=80';
+    }
+    if (lower.contains('comfortable')) {
+      return 'https://images.unsplash.com/photo-1519710164239-da123dc03ef4?ixlib=rb-4.0.3&auto=format&fit=crop&w=1200&q=80';
+    }
+    if (lower.contains('affordable')) {
+      return 'https://images.unsplash.com/photo-1519823551278-64ac92734fb1?ixlib=rb-4.0.3&auto=format&fit=crop&w=1200&q=80';
+    }
+    return 'https://images.unsplash.com/photo-1544161515-4ab6ce6db874?ixlib=rb-4.0.3&auto=format&fit=crop&w=1200&q=80';
   }
 }
