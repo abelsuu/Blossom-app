@@ -12,6 +12,8 @@ import 'features/admin/screens/admin_auth_screen.dart';
 import 'package:blossom_app/features/staff/screens/staff_dashboard.dart';
 import 'package:blossom_app/features/admin/screens/main_layout.dart';
 
+// IMPORTANT: This flag determines if the app forces onboarding flow.
+// On Web, this should generally be false so it defaults to Admin/Staff portals if not logged in.
 const bool kForceOnboarding = bool.fromEnvironment(
   'FORCE_ONBOARDING',
   defaultValue: true,
@@ -22,15 +24,17 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   // Initialize Firebase
+  // This uses firebase_options.dart which automatically handles Web vs Mobile config
   try {
     await Firebase.initializeApp(
       options: DefaultFirebaseOptions.currentPlatform,
-    ).timeout(const Duration(seconds: 10));
+    );
   } catch (e) {
-    debugPrint("Firebase Initialization Error/Timeout: $e");
+    debugPrint("Firebase Initialization Error: $e");
     // Continue running app even if Firebase fails or times out
   }
 
+  // Set up Firebase Database persistence for offline support (Mobile only)
   try {
     if (!kIsWeb) {
       FirebaseDatabase.instance.setPersistenceEnabled(true);
@@ -39,32 +43,6 @@ void main() async {
   } catch (e) {
     debugPrint('RTDB persistence setup error: $e');
   }
-
-  // One-time Database Clean Slate (Reset all points to 0) - do NOT block startup
-  /*
-  try {
-    final prefs = await SharedPreferences.getInstance();
-    final hasResetPoints = prefs.getBool('has_reset_points_v1') ?? false;
-    if (!hasResetPoints) {
-      Future.microtask(() async {
-        try {
-          debugPrint(
-            'Performing one-time database clean slate (resetting points) in background...',
-          );
-          await StaffService.resetAllUsersLoyalty().timeout(
-            const Duration(seconds: 20),
-          );
-          await prefs.setBool('has_reset_points_v1', true);
-          debugPrint('Database clean slate completed.');
-        } catch (e) {
-          debugPrint('Background clean slate error/timeout: $e');
-        }
-      });
-    }
-  } catch (e) {
-    debugPrint('Error scheduling database clean slate: $e');
-  }
-  */
 
   runApp(const MyApp());
 }
@@ -146,12 +124,14 @@ class MyApp extends StatelessWidget {
         '/admin': (context) => const AdminAuthScreen(),
         '/onboarding': (context) => const OnboardingScreen(),
       },
+      // Determine the initial screen based on onboarding flag and auth status
       home: kForceOnboarding
           ? const OnboardingScreen()
           : Builder(
               builder: (context) {
                 final bool firebaseReady = Firebase.apps.isNotEmpty;
                 if (!firebaseReady) {
+                  // If Firebase didn't init, show Admin Auth on Web, Onboarding on Mobile
                   return kIsWeb
                       ? const AdminAuthScreen()
                       : const OnboardingScreen();
