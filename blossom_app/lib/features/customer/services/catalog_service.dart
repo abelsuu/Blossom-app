@@ -134,21 +134,44 @@ class CatalogService {
     return query.onValue.map((event) {
       final data = event.snapshot.value;
       final List<Map<String, dynamic>> allServices = [];
-      if (data is Map) {
-        data.forEach((category, services) {
-          if (services is List) {
-            allServices.addAll(
-              services.map((e) => Map<String, dynamic>.from(e as Map)),
-            );
-          } else if (services is Map) {
-            allServices.addAll(
-              services.values.map((e) => Map<String, dynamic>.from(e as Map)),
-            );
+
+      try {
+        if (data is Map) {
+          data.forEach((category, services) {
+            if (services is List) {
+              allServices.addAll(
+                services.map((e) => Map<String, dynamic>.from(e as Map)),
+              );
+            } else if (services is Map) {
+              allServices.addAll(
+                services.values.map((e) => Map<String, dynamic>.from(e as Map)),
+              );
+            }
+          });
+        } else if (data is List) {
+          // Handle case where root might be a List (unexpected but possible)
+          for (var item in data) {
+            if (item is Map) {
+              // If the list items are categories? Or flattened services?
+              // Assuming standard structure, this branch is unlikely unless schema changed.
+              // But if it's a list of services directly:
+              if (item.containsKey('title')) {
+                allServices.add(Map<String, dynamic>.from(item));
+              }
+            }
           }
-        });
+        }
+      } catch (e) {
+        debugPrint('Error parsing service catalog: $e');
       }
-      // Return actual data (even if empty) to show Realtime Database state
-      // Initial fallback is handled by StreamBuilder's initialData
+
+      // Return fallback data if stream result is empty
+      // This ensures "No services available" is never shown if we have local fallback
+      if (allServices.isEmpty) {
+        debugPrint('Stream returned empty. Using fallback data.');
+        return getFallbackAllServices();
+      }
+
       return allServices;
     });
   }

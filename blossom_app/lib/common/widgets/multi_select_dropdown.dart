@@ -34,43 +34,40 @@ class MultiSelectDropdownWithChips extends StatelessWidget {
               isExpanded: true,
               hint: Text(hint),
               icon: const Icon(Icons.arrow_drop_down),
-              items:
-                  allItems.map((item) {
-                    final isSelected = selectedItems.contains(item);
-                    return DropdownMenuItem<String>(
-                      value: item,
-                      // Allow deselecting even if max is reached (isSelected is true)
-                      // OR allow selecting if max is not reached
-                      enabled: isSelected || selectedItems.length < maxSelection,
-                      child: Row(
-                        children: [
-                          Icon(
-                            isSelected
-                                ? Icons.check_box
-                                : Icons.check_box_outline_blank,
-                            color: isSelected ? Colors.black : Colors.grey,
-                            size: 20,
-                          ),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            child: Text(
-                              item,
-                              overflow: TextOverflow.ellipsis,
-                              style: TextStyle(
-                                color: isSelected ? Colors.grey : Colors.black,
-                              ),
-                            ),
-                          ),
-                        ],
+              items: allItems.map((item) {
+                final isSelected = selectedItems.contains(item);
+                return DropdownMenuItem<String>(
+                  value: item,
+                  enabled: !isSelected || selectedItems.length < maxSelection,
+                  child: Row(
+                    children: [
+                      Icon(
+                        isSelected
+                            ? Icons.check_box
+                            : Icons.check_box_outline_blank,
+                        color: isSelected ? Colors.black : Colors.grey,
+                        size: 20,
                       ),
-                    );
-                  }).toList(),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          item,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            color: isSelected ? Colors.grey : Colors.black,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              }).toList(),
               onChanged: (String? value) {
                 if (value == null) return;
 
                 final newSelected = List<String>.from(selectedItems);
                 if (newSelected.contains(value)) {
-                  // Already selected, do nothing or remove? 
+                  // Already selected, do nothing or remove?
                   // Usually dropdown click adds. Chips remove.
                   // But let's allow toggle behavior in dropdown for better UX
                   newSelected.remove(value);
@@ -78,9 +75,11 @@ class MultiSelectDropdownWithChips extends StatelessWidget {
                   if (newSelected.length < maxSelection) {
                     newSelected.add(value);
                   } else {
-                     ScaffoldMessenger.of(context).showSnackBar(
+                    ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
-                        content: Text('You can only select up to $maxSelection services'),
+                        content: Text(
+                          'You can only select up to $maxSelection services',
+                        ),
                         duration: const Duration(seconds: 2),
                       ),
                     );
@@ -100,22 +99,21 @@ class MultiSelectDropdownWithChips extends StatelessWidget {
           Wrap(
             spacing: 8,
             runSpacing: 8,
-            children:
-                selectedItems.map((item) {
-                  return Chip(
-                    label: Text(item),
-                    backgroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(
-                      side: BorderSide(color: Colors.grey.shade300),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    onDeleted: () {
-                      final newSelected = List<String>.from(selectedItems);
-                      newSelected.remove(item);
-                      onChanged(newSelected);
-                    },
-                  );
-                }).toList(),
+            children: selectedItems.map((item) {
+              return Chip(
+                label: Text(item),
+                backgroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                  side: BorderSide(color: Colors.grey.shade300),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                onDeleted: () {
+                  final newSelected = List<String>.from(selectedItems);
+                  newSelected.remove(item);
+                  onChanged(newSelected);
+                },
+              );
+            }).toList(),
           ),
       ],
     );
