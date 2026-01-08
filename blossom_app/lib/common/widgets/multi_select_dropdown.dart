@@ -39,7 +39,9 @@ class MultiSelectDropdownWithChips extends StatelessWidget {
                     final isSelected = selectedItems.contains(item);
                     return DropdownMenuItem<String>(
                       value: item,
-                      enabled: !isSelected || selectedItems.length < maxSelection,
+                      // Allow deselecting even if max is reached (isSelected is true)
+                      // OR allow selecting if max is not reached
+                      enabled: isSelected || selectedItems.length < maxSelection,
                       child: Row(
                         children: [
                           Icon(
