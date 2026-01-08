@@ -37,6 +37,27 @@ class _AiSkinAnalysisScreenState extends State<AiSkinAnalysisScreen> {
     super.initState();
     if (widget.initialImage != null) {
       _selectedImage = widget.initialImage;
+    } else if (!kIsWeb) {
+      // Check for lost data on Android (e.g., after process death)
+      _retrieveLostData();
+    }
+  }
+
+  Future<void> _retrieveLostData() async {
+    try {
+      final LostDataResponse response = await _picker.retrieveLostData();
+      if (response.isEmpty) {
+        return;
+      }
+      if (response.file != null) {
+        setState(() {
+          _selectedImage = response.file;
+        });
+      } else {
+        debugPrint('Retrieve lost data: No file found.');
+      }
+    } catch (e) {
+      debugPrint('Error retrieving lost data: $e');
     }
   }
 

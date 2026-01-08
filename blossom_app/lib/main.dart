@@ -16,7 +16,7 @@ import 'package:blossom_app/features/admin/screens/main_layout.dart';
 // On Web, this should generally be false so it defaults to Admin/Staff portals if not logged in.
 const bool kForceOnboarding = bool.fromEnvironment(
   'FORCE_ONBOARDING',
-  defaultValue: true,
+  defaultValue: false,
 );
 
 void main() async {

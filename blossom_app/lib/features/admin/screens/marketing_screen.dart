@@ -25,6 +25,8 @@ class _MarketingScreenState extends State<MarketingScreen> {
   int _selectedThemeIndex = 0;
   int _selectedImageIndex = 0;
   String? _editingId;
+  bool _useManualUrl = false;
+  String _manualImageUrl = '';
 
   final List<Map<String, dynamic>> _themes = [
     {
@@ -96,6 +98,8 @@ class _MarketingScreenState extends State<MarketingScreen> {
             _imageBytes = bytes;
             _uploadedImageUrl = null;
             _selectedImageIndex = -1; // Indicate custom image
+            _useManualUrl = false;
+            _manualImageUrl = '';
           });
         }
       }
@@ -121,6 +125,8 @@ class _MarketingScreenState extends State<MarketingScreen> {
       _subtitleController.text = promo['subtitle'] ?? '';
       _descriptionController.text = promo['description'] ?? '';
       _treatmentsController.text = promo['applicableTreatments'] ?? '';
+      _useManualUrl = false;
+      _manualImageUrl = '';
 
       if (promo['validUntil'] != null) {
         _validUntil = DateTime.tryParse(promo['validUntil']);
@@ -171,6 +177,8 @@ class _MarketingScreenState extends State<MarketingScreen> {
       _imageBytes = null;
       _selectedThemeIndex = 0;
       _selectedImageIndex = 0;
+      _useManualUrl = false;
+      _manualImageUrl = '';
     });
   }
 
@@ -183,7 +191,9 @@ class _MarketingScreenState extends State<MarketingScreen> {
     }
 
     String imageUrl;
-    if (_uploadedImageUrl != null) {
+    if (_useManualUrl) {
+      imageUrl = _manualImageUrl;
+    } else if (_uploadedImageUrl != null) {
       imageUrl = _uploadedImageUrl!;
     } else if (_selectedImageIndex >= 0 &&
         _selectedImageIndex < _images.length) {
@@ -487,9 +497,7 @@ class _MarketingScreenState extends State<MarketingScreen> {
                                 vertical: 16,
                               ),
                               decoration: BoxDecoration(
-                                color: const Color(
-                                  0xFFFFF8E1,
-                                ).withValues(alpha: 0.5),
+                                color: const Color(0xFFE5E0D0),
                                 borderRadius: BorderRadius.circular(12),
                               ),
                               child: Row(
@@ -595,97 +603,226 @@ class _MarketingScreenState extends State<MarketingScreen> {
                           const SizedBox(height: 24),
 
                           // Image Selector
-                          const Text(
-                            'Select Visual',
-                            style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              color: Color(0xFF5D5343),
-                            ),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              const Text(
+                                'Visual Asset',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  color: Color(0xFF5D5343),
+                                ),
+                              ),
+                              Row(
+                                children: [
+                                  const Text(
+                                    'Upload File',
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.bold,
+                                      color: Color(0xFF5D5343),
+                                    ),
+                                  ),
+                                  Switch(
+                                    value: _useManualUrl,
+                                    onChanged: (value) {
+                                      setState(() {
+                                        _useManualUrl = value;
+                                        if (value) {
+                                          _imageBytes = null;
+                                          _selectedImageIndex = -1;
+                                        } else {
+                                          _manualImageUrl = '';
+                                        }
+                                      });
+                                    },
+                                    activeTrackColor: const Color(0xFF5D5343),
+                                    activeThumbColor: Colors.white,
+                                  ),
+                                  const Text(
+                                    'Manual URL',
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.bold,
+                                      color: Color(0xFF5D5343),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
                           ),
                           const SizedBox(height: 12),
-                          SizedBox(
-                            height: 80,
-                            child: ListView.separated(
-                              scrollDirection: Axis.horizontal,
-                              itemCount: _images.length + 1,
-                              separatorBuilder: (context, index) =>
-                                  const SizedBox(width: 12),
-                              itemBuilder: (context, index) {
-                                if (index == 0) {
-                                  // Upload Button
-                                  return GestureDetector(
-                                    onTap: _pickImage,
-                                    child: Container(
-                                      width: 80,
-                                      decoration: BoxDecoration(
-                                        color: const Color(0xFFFFF8E1),
-                                        borderRadius: BorderRadius.circular(12),
-                                        border: Border.all(
-                                          color: const Color(0xFF5D5343),
-                                          width: 2,
-                                        ),
-                                      ),
-                                      child: _isPickingImage
-                                          ? const Center(
-                                              child: CircularProgressIndicator(
-                                                strokeWidth: 2,
-                                              ),
-                                            )
-                                          : const Center(
-                                              child: Icon(
-                                                Icons.upload,
-                                                color: Color(0xFF5D5343),
-                                              ),
-                                            ),
-                                    ),
-                                  );
-                                }
-                                final imageIndex = index - 1;
-                                final isSelected =
-                                    _selectedImageIndex == imageIndex;
-                                return GestureDetector(
-                                  onTap: () => setState(
-                                    () => _selectedImageIndex = imageIndex,
-                                  ),
-                                  child: Container(
-                                    width: 80,
-                                    decoration: BoxDecoration(
-                                      borderRadius: BorderRadius.circular(12),
-                                      border: isSelected
-                                          ? Border.all(
-                                              color: const Color(0xFF5D5343),
-                                              width: 3,
-                                            )
-                                          : null,
-                                      image: DecorationImage(
-                                        image: NetworkImage(
-                                          _images[imageIndex],
-                                        ),
-                                        fit: BoxFit.cover,
-                                      ),
-                                    ),
-                                    child: isSelected
-                                        ? Container(
-                                            decoration: BoxDecoration(
-                                              color: Colors.black.withValues(
-                                                alpha: 0.3,
-                                              ),
-                                              borderRadius:
-                                                  BorderRadius.circular(9),
-                                            ),
-                                            child: const Center(
-                                              child: Icon(
-                                                Icons.check_circle,
-                                                color: Colors.white,
-                                              ),
-                                            ),
-                                          )
-                                        : null,
-                                  ),
-                                );
+
+                          if (_useManualUrl) ...[
+                            TextField(
+                              controller: TextEditingController(
+                                text: _manualImageUrl,
+                              ),
+                              onChanged: (value) {
+                                _manualImageUrl = value;
+                                setState(() {
+                                  _selectedImageIndex = -1;
+                                  _uploadedImageUrl = null;
+                                });
                               },
+                              decoration: InputDecoration(
+                                hintText: 'Enter image URL...',
+                                filled: true,
+                                fillColor: const Color(0xFFE5E0D0),
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                  borderSide: BorderSide.none,
+                                ),
+                                contentPadding: const EdgeInsets.symmetric(
+                                  horizontal: 16,
+                                  vertical: 12,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 16),
+                          ],
+
+                          // Image preview/upload area (Big Box)
+                          GestureDetector(
+                            onTap: _useManualUrl ? null : _pickImage,
+                            child: Container(
+                              height: 200,
+                              width: double.infinity,
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFE5E0D0),
+                                borderRadius: BorderRadius.circular(24),
+                                image: _imageBytes != null
+                                    ? DecorationImage(
+                                        image: MemoryImage(_imageBytes!),
+                                        fit: BoxFit.cover,
+                                      )
+                                    : (_useManualUrl &&
+                                              _manualImageUrl.isNotEmpty
+                                          ? DecorationImage(
+                                              image: NetworkImage(
+                                                _manualImageUrl,
+                                              ),
+                                              fit: BoxFit.cover,
+                                            )
+                                          : (_uploadedImageUrl != null
+                                                ? DecorationImage(
+                                                    image: NetworkImage(
+                                                      _uploadedImageUrl!,
+                                                    ),
+                                                    fit: BoxFit.cover,
+                                                  )
+                                                : (_selectedImageIndex != -1
+                                                      ? DecorationImage(
+                                                          image: NetworkImage(
+                                                            _images[_selectedImageIndex],
+                                                          ),
+                                                          fit: BoxFit.cover,
+                                                        )
+                                                      : null))),
+                              ),
+                              child: _isPickingImage
+                                  ? const Center(
+                                      child: Column(
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.center,
+                                        children: [
+                                          CircularProgressIndicator(
+                                            color: Color(0xFF5D5343),
+                                          ),
+                                          SizedBox(height: 8),
+                                          Text(
+                                            'Processing...',
+                                            style: TextStyle(
+                                              color: Color(0xFF5D5343),
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    )
+                                  : (_imageBytes == null &&
+                                            _uploadedImageUrl == null &&
+                                            (_selectedImageIndex == -1 ||
+                                                _useManualUrl) &&
+                                            (!_useManualUrl ||
+                                                _manualImageUrl.isEmpty)
+                                        ? Column(
+                                            mainAxisAlignment:
+                                                MainAxisAlignment.center,
+                                            children: [
+                                              Icon(
+                                                _useManualUrl
+                                                    ? Icons.link
+                                                    : Icons
+                                                          .cloud_upload_outlined,
+                                                size: 48,
+                                                color: const Color(0xFF5D5343),
+                                              ),
+                                              const SizedBox(height: 8),
+                                              Text(
+                                                _useManualUrl
+                                                    ? 'Enter URL above'
+                                                    : 'Click to upload image',
+                                                style: const TextStyle(
+                                                  color: Color(0xFF5D5343),
+                                                  fontWeight: FontWeight.bold,
+                                                ),
+                                              ),
+                                            ],
+                                          )
+                                        : null),
                             ),
                           ),
+
+                          // Presets (Optional)
+                          if (!_useManualUrl) ...[
+                            const SizedBox(height: 16),
+                            const Text(
+                              'Or choose from presets:',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: Colors.grey,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            SizedBox(
+                              height: 60,
+                              child: ListView.separated(
+                                scrollDirection: Axis.horizontal,
+                                itemCount: _images.length,
+                                separatorBuilder: (context, index) =>
+                                    const SizedBox(width: 8),
+                                itemBuilder: (context, index) {
+                                  final isSelected =
+                                      _selectedImageIndex == index;
+                                  return GestureDetector(
+                                    onTap: () => setState(() {
+                                      _selectedImageIndex = index;
+                                      _imageBytes = null;
+                                      _uploadedImageUrl = null;
+                                    }),
+                                    child: Container(
+                                      width: 60,
+                                      decoration: BoxDecoration(
+                                        borderRadius: BorderRadius.circular(8),
+                                        border: isSelected
+                                            ? Border.all(
+                                                color: const Color(0xFF5D5343),
+                                                width: 3,
+                                              )
+                                            : null,
+                                        image: DecorationImage(
+                                          image: NetworkImage(_images[index]),
+                                          fit: BoxFit.cover,
+                                        ),
+                                      ),
+                                    ),
+                                  );
+                                },
+                              ),
+                            ),
+                          ],
                           const SizedBox(height: 32),
 
                           // Submit Button
@@ -843,7 +980,9 @@ class _MarketingScreenState extends State<MarketingScreen> {
   Widget _buildLivePreviewCard() {
     final theme = _themes[_selectedThemeIndex];
     String imageUrl;
-    if (_uploadedImageUrl != null) {
+    if (_useManualUrl) {
+      imageUrl = _manualImageUrl.isNotEmpty ? _manualImageUrl : _images[0];
+    } else if (_uploadedImageUrl != null) {
       imageUrl = _uploadedImageUrl!;
     } else if (_selectedImageIndex >= 0 &&
         _selectedImageIndex < _images.length) {
@@ -978,7 +1117,7 @@ class _MarketingScreenState extends State<MarketingScreen> {
                     child: Icon(icon, color: const Color(0xFFCFA6A6), size: 20),
                   ),
             filled: true,
-            fillColor: const Color(0xFFFFF8E1).withValues(alpha: 0.5),
+            fillColor: const Color(0xFFE5E0D0),
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
               borderSide: BorderSide.none,
