@@ -48,7 +48,7 @@ dependencies:
   google_fonts: ^6.3.3
   google_generative_ai: ^0.4.7 # AI features for skin analysis
   permission_handler: ^12.0.1
-  table_calendar: ^3.0.9
+  table_calendar: ^3.0.9 # A highly customizable, feature-rich calendar widget for Flutter.
   cloud_functions: ^6.0.5
   url_launcher_web: ^2.4.1 # Required for launching URLs on the web platform
 
