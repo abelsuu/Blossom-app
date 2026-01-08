@@ -1,3 +1,10 @@
+/*
+  Customer home screen for Blossom app. Displays greeting,
+  loyalty card, upcoming appointment, location, promotions and
+  service catalog. Navigation tabs switch between Home, Booking,
+  Facial AI, Chat and Profile.
+*/
+
 import 'dart:convert';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_database/firebase_database.dart';
