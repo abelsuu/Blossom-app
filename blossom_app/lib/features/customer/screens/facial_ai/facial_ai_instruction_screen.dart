@@ -59,8 +59,7 @@ class FacialAIInstructionScreen extends StatelessWidget {
             _buildInstructionCard(
               context,
               isCorrect: true,
-              imageUrl:
-                  'https://images.unsplash.com/photo-1544005313-94ddf0286df2?q=80&w=400', // Front face
+              imageUrl: 'assets/images/instruction1.png',
               title: 'Correct way',
               description:
                   'Make sure the camera capture your\nface fully with a better lightning\nand without makeup.',
@@ -69,21 +68,10 @@ class FacialAIInstructionScreen extends StatelessWidget {
             _buildInstructionCard(
               context,
               isCorrect: false,
-              imageUrl:
-                  'https://images.unsplash.com/photo-1500917293891-ef795e70e1f6?q=80&w=400', // Side profile
+              imageUrl: 'assets/images/instruction2.png',
               title: 'Wrong way',
               description:
                   'Avoid provide a half face photo as\nit could give wrong analysis.',
-            ),
-            const SizedBox(height: 24),
-            _buildInstructionCard(
-              context,
-              isCorrect: false,
-              imageUrl:
-                  'https://images.unsplash.com/photo-1513279929416-4e0299063b33?q=80&w=400', // Poor lighting
-              title: 'Poor lighting',
-              description:
-                  'Ensure bright, even lighting.\nAvoid dark rooms, shadows, or backlight.',
             ),
             const SizedBox(height: 40),
             SizedBox(
@@ -145,13 +133,13 @@ class FacialAIInstructionScreen extends StatelessWidget {
             children: [
               // Image
               Container(
-                height: 180,
+                height: 220, // Increased height
                 width: double.infinity,
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(16),
                   image: DecorationImage(
-                    image: NetworkImage(imageUrl),
-                    fit: BoxFit.cover,
+                    image: AssetImage(imageUrl),
+                    fit: BoxFit.contain, // Changed to contain to show full photo
                   ),
                 ),
               ),
