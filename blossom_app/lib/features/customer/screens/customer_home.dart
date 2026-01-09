@@ -860,114 +860,197 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
   Widget _buildRecommendations() {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return const SizedBox.shrink();
-    return SizedBox(
-      height: 120,
-      child: StreamBuilder<DatabaseEvent>(
-        stream: FirebaseDatabase.instance.ref('bookings').onValue,
-        builder: (context, snapshot) {
-          final data = snapshot.data?.snapshot.value;
-          if (data == null) return const SizedBox.shrink();
-          final Map<dynamic, dynamic> map = data as Map<dynamic, dynamic>;
-          final Map<String, int> counts = {};
-          map.forEach((key, value) {
-            final b = Map<String, dynamic>.from(value as Map);
-            if (b['userId'] == user.uid) {
-              if (b['services'] is List) {
-                for (final s in (b['services'] as List)) {
-                  if (s is String && s.isNotEmpty) {
-                    counts[s] = (counts[s] ?? 0) + 1;
-                  }
-                }
-              } else if (b['request'] is String) {
-                final s = b['request'] as String;
-                if (s.isNotEmpty) counts[s] = (counts[s] ?? 0) + 1;
+
+    return StreamBuilder<List<Map<String, dynamic>>>(
+      stream: UserService.getSkinAnalysisHistoryStream(user.uid),
+      builder: (context, snapshot) {
+        final history = snapshot.data ?? [];
+        final treatments = <String>[];
+
+        // 1. Get treatments from latest skin analysis
+        if (history.isNotEmpty) {
+          final latestResult = history.first['result'] as Map<dynamic, dynamic>?;
+          final recs = latestResult?['treatments'] as List<dynamic>?;
+          if (recs != null) {
+            for (var t in recs) {
+              if (t is Map && t['name'] != null) {
+                treatments.add(t['name'].toString());
               }
             }
-          });
-          final items = counts.entries.toList()
-            ..sort((a, b) => b.value.compareTo(a.value));
-          final top = items.take(6).map((e) => e.key).toList();
-          if (top.isEmpty) {
-            return const Text('No recommendations yet');
           }
-          return ListView.separated(
-            scrollDirection: Axis.horizontal,
-            itemCount: top.length,
-            separatorBuilder: (context, index) => const SizedBox(width: 12),
-            itemBuilder: (context, index) {
-              final name = top[index];
-              final cat = (() {
-                final n = name.toLowerCase();
-                if (n.contains('facial')) {
-                  return 'Facials';
+        }
+
+        return StreamBuilder<DatabaseEvent>(
+          stream: FirebaseDatabase.instance.ref('bookings').onValue,
+          builder: (context, bookingSnapshot) {
+            final data = bookingSnapshot.data?.snapshot.value;
+            final Map<String, int> counts = {};
+
+            // 2. Get recommendations from booking history
+            if (data != null) {
+              final Map<dynamic, dynamic> map = data as Map<dynamic, dynamic>;
+              map.forEach((key, value) {
+                final b = Map<String, dynamic>.from(value as Map);
+                if (b['userId'] == user.uid) {
+                  if (b['services'] is List) {
+                    for (final s in (b['services'] as List)) {
+                      if (s is String && s.isNotEmpty) {
+                        counts[s] = (counts[s] ?? 0) + 1;
+                      }
+                    }
+                  }
                 }
-                if (n.contains('manicure') ||
-                    n.contains('pedicure') ||
-                    n.contains('polish') ||
-                    n.contains('nail')) {
-                  return 'Beauty';
-                }
-                return 'Body';
-              })();
-              return GestureDetector(
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => ServiceCatalogScreen(category: cat),
-                    ),
-                  );
-                },
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 12,
-                  ),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(16),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.05),
-                        blurRadius: 10,
-                        offset: const Offset(0, 5),
-                      ),
-                    ],
-                    border: Border.all(
-                      color: Colors.brown.withValues(alpha: 0.1),
-                    ),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        'Based on your bookings',
-                        style: TextStyle(fontSize: 10, color: Colors.grey),
-                      ),
-                      const SizedBox(height: 6),
-                      Text(
-                        name,
-                        style: const TextStyle(
-                          fontWeight: FontWeight.bold,
-                          color: Color(0xFF4E342E),
-                        ),
-                      ),
-                      const Spacer(),
-                      Row(
-                        children: [
-                          const Icon(Icons.arrow_forward_ios_rounded, size: 12),
-                          const SizedBox(width: 4),
-                          const Text('View', style: TextStyle(fontSize: 12)),
-                        ],
-                      ),
-                    ],
+              });
+            }
+
+            final bookingItems = counts.entries.toList()
+              ..sort((a, b) => b.value.compareTo(a.value));
+            final topBookings = bookingItems.take(3).map((e) => e.key).toList();
+
+            // Combine both sources
+            final allRecommendations = [
+              ...treatments.map((t) => {'name': t, 'type': 'Skin Analysis'}),
+              ...topBookings.map((t) => {'name': t, 'type': 'Your Bookings'}),
+            ];
+
+            if (allRecommendations.isEmpty) {
+              return const Padding(
+                padding: EdgeInsets.symmetric(vertical: 20),
+                child: Center(
+                  child: Text(
+                    'No recommendations yet.\nTry a Skin Analysis!',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(color: Colors.grey),
                   ),
                 ),
               );
-            },
-          );
-        },
-      ),
+            }
+
+            return SizedBox(
+              height: 120,
+              child: ListView.separated(
+                scrollDirection: Axis.horizontal,
+                itemCount: allRecommendations.length,
+                separatorBuilder: (context, index) => const SizedBox(width: 12),
+                itemBuilder: (context, index) {
+                  final item = allRecommendations[index];
+                  final name = item['name']!;
+                  final type = item['type']!;
+
+                  final cat = (() {
+                    final n = name.toLowerCase();
+                    if (n.contains('facial')) return 'Facials';
+                    if (n.contains('manicure') ||
+                        n.contains('pedicure') ||
+                        n.contains('polish') ||
+                        n.contains('nail')) {
+                      return 'Beauty';
+                    }
+                    return 'Body';
+                  })();
+
+                  return GestureDetector(
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) =>
+                              ServiceCatalogScreen(category: cat),
+                        ),
+                      );
+                    },
+                    child: Container(
+                      width: 180,
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(20),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.05),
+                            blurRadius: 10,
+                            offset: const Offset(0, 5),
+                          ),
+                        ],
+                        border: Border.all(
+                          color: type == 'Skin Analysis'
+                              ? const Color(0xFFCFA6A6).withValues(alpha: 0.3)
+                              : Colors.brown.withValues(alpha: 0.1),
+                          width: type == 'Skin Analysis' ? 1.5 : 1,
+                        ),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Icon(
+                                type == 'Skin Analysis'
+                                    ? Icons.auto_awesome_rounded
+                                    : Icons.history_rounded,
+                                size: 12,
+                                color: type == 'Skin Analysis'
+                                    ? const Color(0xFFCFA6A6)
+                                    : Colors.grey,
+                              ),
+                              const SizedBox(width: 4),
+                              Expanded(
+                                child: Text(
+                                  'Based on $type',
+                                  style: TextStyle(
+                                    fontSize: 9,
+                                    fontWeight: FontWeight.bold,
+                                    color: type == 'Skin Analysis'
+                                        ? const Color(0xFFCFA6A6)
+                                        : Colors.grey,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            name,
+                            style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 14,
+                              color: Color(0xFF4E342E),
+                            ),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          const Spacer(),
+                          const Row(
+                            mainAxisAlignment: MainAxisAlignment.end,
+                            children: [
+                              Text(
+                                'Book',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.bold,
+                                  color: Color(0xFFCFA6A6),
+                                ),
+                              ),
+                              SizedBox(width: 2),
+                              Icon(
+                                Icons.arrow_forward_ios_rounded,
+                                size: 10,
+                                color: Color(0xFFCFA6A6),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                },
+              ),
+            );
+          },
+        );
+      },
     );
   }
 }
