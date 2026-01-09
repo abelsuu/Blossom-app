@@ -1,3 +1,3 @@
 # Blossom-app
 
-Go to Master Branch for Lates source code
+Go to Master Branch for Lattes source code
