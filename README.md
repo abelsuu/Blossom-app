@@ -89,6 +89,17 @@ flutter run -d chrome --web-port=5000
 *   **Persistence:** Mobile apps have offline persistence enabled for viewing cached data.
 
 ---
+## 🔑 API Configuration (Gemini AI)
+
+The Skin Analysis feature requires a Google Gemini API Key. If no key is provided, the app will run in **Simulation Mode** with sample data.
+
+### **How to set up:**
+1.  **Get a Key:** Obtain a free API key from [Google AI Studio](https://aistudio.google.com/app/apikey).
+2.  **Configure the App:**
+    *   Open `lib/features/customer/screens/ai_skin_analysis/services/skin_analysis_service.dart`.
+    *   Find the `_apiKey` constant at the top of the class.
+    *   Paste your key inside the quotes:
+---
 
 ## 🔌 FAQ: Phone Connection & Unplugging
 
@@ -99,8 +110,10 @@ flutter run -d chrome --web-port=5000
 *   **After Installation:** Once the app is installed on your phone (after `flutter run` finishes installing), **you can unplug the cable**. The app is now installed on your device like any other app from the App Store.
 
 **Q: Can I run it if I unplug?**
+
 **A: Yes!** You can close the terminal, unplug your phone, and walk away. Just tap the **Blossom App** icon on your phone's home screen to open it.
 
 **Q: What do I need for it to work?**
+
 **A: Internet Connection.**
 Since the app connects to a cloud database (Firebase) to save bookings, fetch services, and perform AI analysis, **your phone must have an active internet connection (Wi-Fi or Mobile Data)**. It does **not** need to be on the same Wi-Fi as your laptop.
