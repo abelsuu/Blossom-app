@@ -1,6 +1,10 @@
+// This screen provides a login interface specifically for admin users.
+// It validates user credentials and restricts access to accounts with emails
+// starting with 'admin'.
+
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'main_layout.dart';
+import 'main_layout.dart'; // The main layout for the admin panel after login.
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -12,12 +16,14 @@ class LoginScreen extends StatefulWidget {
 class _LoginScreenState extends State<LoginScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
-  bool _isLoading = false;
+  bool _isLoading = false; // Manages the loading state of the sign-in button.
 
+  // Handles the entire sign-in process, including validation and Firebase authentication.
   Future<void> _signIn() async {
     final email = _emailController.text.trim();
     final password = _passwordController.text.trim();
 
+    // Basic validation for empty fields.
     if (email.isEmpty || password.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -28,7 +34,7 @@ class _LoginScreenState extends State<LoginScreen> {
       return;
     }
 
-    // Validate Admin Email
+    // Security check: Only allows emails that start with 'admin' to attempt login.
     if (!email.startsWith('admin')) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -46,11 +52,13 @@ class _LoginScreenState extends State<LoginScreen> {
     });
 
     try {
+      // Attempt to sign in with the provided credentials using Firebase Auth.
       await FirebaseAuth.instance.signInWithEmailAndPassword(
         email: email,
         password: password,
       );
 
+      // On successful login, replace the current screen with the admin main layout.
       if (mounted) {
         Navigator.pushReplacement(
           context,
@@ -58,6 +66,7 @@ class _LoginScreenState extends State<LoginScreen> {
         );
       }
     } on FirebaseAuthException catch (e) {
+      // Display any Firebase authentication errors (e.g., wrong password) to the user.
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -67,6 +76,7 @@ class _LoginScreenState extends State<LoginScreen> {
         );
       }
     } catch (e) {
+      // Catch any other unexpected errors during the process.
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -76,6 +86,7 @@ class _LoginScreenState extends State<LoginScreen> {
         );
       }
     } finally {
+      // Ensure the loading indicator is turned off, regardless of outcome.
       if (mounted) {
         setState(() {
           _isLoading = false;
@@ -84,6 +95,7 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
+  // Clean up the controllers when the widget is removed from the tree to prevent memory leaks.
   @override
   void dispose() {
     _emailController.dispose();
@@ -93,7 +105,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // Colors extracted from the design
+    // Defines the visual theme and colors for the admin login screen.
     const Color backgroundColor = Color(0xFFEEE6D3);
     const Color cardColor = Color(0xFFBFB59B);
     const Color buttonColor = Color(0xFF5D5343);
@@ -106,8 +118,9 @@ class _LoginScreenState extends State<LoginScreen> {
         child: SingleChildScrollView(
           child: Padding(
             padding: const EdgeInsets.all(16.0),
+            // Main layout with a centered card for the login form.
             child: Container(
-              width: 500, // Fixed width for the card
+              width: 500, // Fixed width for a consistent look on larger screens.
               padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 50),
               decoration: BoxDecoration(
                 color: cardColor,
@@ -116,9 +129,9 @@ class _LoginScreenState extends State<LoginScreen> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  // Logo Placeholder
+                  // Logo and branding.
                   const Icon(
-                    Icons.local_florist_outlined, // Flower icon for Blossom
+                    Icons.local_florist_outlined,
                     size: 80,
                     color: Color(0xFF5D5343),
                   ),
@@ -142,6 +155,8 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                   ),
                   const SizedBox(height: 30),
+
+                  // Header text.
                   const Text(
                     'Login to Account',
                     style: TextStyle(
@@ -157,14 +172,14 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                   const SizedBox(height: 40),
 
-                  // Email Field
+                  // Email input field.
                   Align(
                     alignment: Alignment.centerLeft,
                     child: Text(
                       'Email Address',
                       style: TextStyle(
                         fontWeight: FontWeight.w600,
-                        color: textColor.withValues(alpha: 0.8),
+                        color: textColor.withOpacity(0.8),
                       ),
                     ),
                   ),
@@ -187,21 +202,21 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                   const SizedBox(height: 20),
 
-                  // Password Field
+                  // Password input field.
                   Align(
                     alignment: Alignment.centerLeft,
                     child: Text(
                       'Password',
                       style: TextStyle(
                         fontWeight: FontWeight.w600,
-                        color: textColor.withValues(alpha: 0.8),
+                        color: textColor.withOpacity(0.8),
                       ),
                     ),
                   ),
                   const SizedBox(height: 8),
                   TextField(
                     controller: _passwordController,
-                    obscureText: true,
+                    obscureText: true, // Hides password characters.
                     decoration: InputDecoration(
                       filled: true,
                       fillColor: inputFillColor,
@@ -218,7 +233,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                   const SizedBox(height: 10),
 
-                  // Forget Password
+                  // Placeholder for password recovery.
                   Align(
                     alignment: Alignment.centerRight,
                     child: TextButton(
@@ -226,14 +241,14 @@ class _LoginScreenState extends State<LoginScreen> {
                       child: Text(
                         'Forget Password?',
                         style: TextStyle(
-                          color: textColor.withValues(alpha: 0.7),
+                          color: textColor.withOpacity(0.7),
                         ),
                       ),
                     ),
                   ),
                   const SizedBox(height: 20),
 
-                  // Sign In Button
+                  // Sign In button with loading indicator.
                   SizedBox(
                     width: double.infinity,
                     height: 50,

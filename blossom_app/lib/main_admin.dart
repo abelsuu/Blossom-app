@@ -1,3 +1,5 @@
+// main_admin.dart
+
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/gestures.dart';
@@ -8,6 +10,11 @@ import 'firebase_options.dart';
 import 'features/admin/screens/admin_auth_screen.dart';
 
 void main() async {
+  // This is the entry point for the admin version of the Blossom app.
+  // It initializes Firebase and sets up the app to run the AdminAuthScreen.
+  // To run this app, make sure you are in the 'blossom_app' directory
+  // and execute 'flutter run -t lib/main_admin.dart'.
+
   // Ensure Flutter binding is initialized BEFORE any async calls
   WidgetsFlutterBinding.ensureInitialized();
 
@@ -106,7 +113,8 @@ class MyApp extends StatelessWidget {
           ),
         ),
       ),
-      // DIRECTLY Point to AdminAuthScreen
+      // This app is specifically for admin users, so we go directly to the
+      // AdminAuthScreen.
       home: const AdminAuthScreen(),
     );
   }

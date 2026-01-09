@@ -1,3 +1,6 @@
+// This screen is displayed upon successful user registration.
+// It provides feedback to the user and a button to proceed to the login screen.
+
 import 'package:flutter/material.dart';
 import 'package:blossom_app/features/auth/screens/login_screen.dart';
 
@@ -15,13 +18,13 @@ class SignUpCompleteScreen extends StatelessWidget {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              // Success Icon
+              // A decorative icon to visually confirm success.
               Container(
                 width: 120,
                 height: 120,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: theme.colorScheme.primary.withValues(alpha: 0.1),
+                  color: theme.colorScheme.primary.withOpacity(0.1),
                 ),
                 child: Icon(
                   Icons.check_circle,
@@ -30,6 +33,8 @@ class SignUpCompleteScreen extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 30),
+              
+              // Welcome message.
               Text(
                 'Welcome to Blossom!',
                 style: theme.textTheme.headlineMedium?.copyWith(
@@ -39,6 +44,8 @@ class SignUpCompleteScreen extends StatelessWidget {
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 10),
+              
+              // Confirmation text.
               Text(
                 'Your account has been created successfully.',
                 style: theme.textTheme.bodyLarge?.copyWith(
@@ -47,12 +54,15 @@ class SignUpCompleteScreen extends StatelessWidget {
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 40),
+              
+              // Button to navigate to the login screen.
               SizedBox(
                 width: double.infinity,
                 height: 56,
                 child: ElevatedButton(
                   onPressed: () {
-                    // Navigate back to Login Screen
+                    // Removes all previous routes and navigates to the LoginScreen,
+                    // preventing the user from going back to the sign-up flow.
                      Navigator.pushAndRemoveUntil(
                       context,
                       MaterialPageRoute(builder: (context) => const LoginScreen()),

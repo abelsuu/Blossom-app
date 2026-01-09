@@ -1,3 +1,6 @@
+// This screen collects basic user information during the signup process,
+// including name, email, and an optional referral code.
+
 import 'package:flutter/material.dart';
 import 'package:blossom_app/features/customer/screens/signup/signup_layout.dart';
 import 'package:blossom_app/features/customer/screens/signup/signup_password_screen.dart';
@@ -18,6 +21,7 @@ class SignUpBasicInfoScreen extends StatelessWidget {
           'Already have an account? Login', // In a real app, Login would be tappable
       onBack: () => Navigator.pop(context),
       child: SingleChildScrollView(
+        // Enables scrolling to prevent overflow on smaller screens.
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -71,6 +75,7 @@ class SignUpBasicInfoScreen extends StatelessWidget {
               height: 56,
               child: ElevatedButton(
                 onPressed: () {
+                  // Navigates to the password screen, passing along the collected info.
                   Navigator.push(
                     context,
                     MaterialPageRoute(
@@ -90,28 +95,30 @@ class SignUpBasicInfoScreen extends StatelessWidget {
             ),
             const SizedBox(height: 40),
 
+            // Visual divider with text, offering alternative sign-up options.
             Row(
               children: [
                 Expanded(
-                  child: Divider(color: Colors.black.withValues(alpha: 0.1)),
+                  child: Divider(color: Colors.black.withOpacity(0.1)),
                 ),
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 16),
                   child: Text(
                     'Or sign up with',
                     style: TextStyle(
-                      color: Colors.black.withValues(alpha: 0.5),
+                      color: Colors.black.withOpacity(0.5),
                       fontSize: 12,
                     ),
                   ),
                 ),
                 Expanded(
-                  child: Divider(color: Colors.black.withValues(alpha: 0.1)),
+                  child: Divider(color: Colors.black.withOpacity(0.1)),
                 ),
               ],
             ),
             const SizedBox(height: 30),
 
+            // Social media sign-up buttons (placeholders).
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
@@ -128,6 +135,7 @@ class SignUpBasicInfoScreen extends StatelessWidget {
     );
   }
 
+  // A helper widget to create styled social media icon buttons.
   Widget _buildSocialButton(IconData icon, Color color, ThemeData theme) {
     return Container(
       width: 60,
@@ -137,7 +145,7 @@ class SignUpBasicInfoScreen extends StatelessWidget {
         shape: BoxShape.circle,
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
+            color: Colors.black.withOpacity(0.05),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -145,7 +153,9 @@ class SignUpBasicInfoScreen extends StatelessWidget {
         border: Border.all(color: Colors.grey.shade200),
       ),
       child: IconButton(
-        onPressed: () {},
+        onPressed: () {
+          // Placeholder for social media sign-in logic.
+        },
         icon: Icon(icon, color: color, size: 30),
       ),
     );
