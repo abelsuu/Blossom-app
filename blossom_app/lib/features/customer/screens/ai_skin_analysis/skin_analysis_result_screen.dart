@@ -203,13 +203,14 @@ class _SkinAnalysisResultScreenState extends State<SkinAnalysisResultScreen> {
             ),
             const SizedBox(height: 16),
 
-            // Metrics Row (Horizontal Scroll)
-            SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              clipBehavior: Clip.none,
-              child: Row(
+            // Balanced Metrics Layout
+            Center(
+              child: Wrap(
+                spacing: 12,
+                runSpacing: 12,
+                alignment: WrapAlignment.center,
                 children: [
-                  _buildMetricBox('Skin Type', skinType, isFirst: true),
+                  _buildMetricBox('Skin Type', skinType),
                   _buildMetricBox(
                     'Texture',
                     metrics['texture']?['value'] ?? 'Unknown',
@@ -393,20 +394,23 @@ class _SkinAnalysisResultScreenState extends State<SkinAnalysisResultScreen> {
     );
   }
 
-  Widget _buildMetricBox(String label, String value, {bool isFirst = false}) {
+  Widget _buildMetricBox(String label, String value) {
+    // Calculate width for 3 items per row with spacing
+    final double screenWidth = MediaQuery.of(context).size.width;
+    final double horizontalPadding = 48; // 24 * 2
+    final double spacing = 12 * 2; // 12 spacing between 3 items
+    final double boxWidth = (screenWidth - horizontalPadding - spacing) / 3;
+
     return Container(
-      width: 110,
+      width: boxWidth,
       height: 90,
-      margin: const EdgeInsets.only(right: 12),
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.all(8),
       decoration: BoxDecoration(
-        color: isFirst ? Theme.of(context).primaryColor : Colors.white,
+        color: const Color(0xFFF5E1DA), // Light dusty rose fill color (not white)
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: isFirst
-                ? Theme.of(context).primaryColor.withValues(alpha: 0.3)
-                : Colors.black.withValues(alpha: 0.05),
+            color: Colors.black.withValues(alpha: 0.05),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -420,10 +424,10 @@ class _SkinAnalysisResultScreenState extends State<SkinAnalysisResultScreen> {
             textAlign: TextAlign.center,
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
-            style: TextStyle(
+            style: const TextStyle(
               fontSize: 12,
               fontWeight: FontWeight.bold,
-              color: isFirst ? Colors.white : const Color(0xFF2D3142),
+              color: Color(0xFF2D3142),
             ),
           ),
           const SizedBox(height: 6),
@@ -433,9 +437,7 @@ class _SkinAnalysisResultScreenState extends State<SkinAnalysisResultScreen> {
             style: TextStyle(
               fontSize: 10,
               fontWeight: FontWeight.w500,
-              color: isFirst
-                  ? Colors.white.withValues(alpha: 0.9)
-                  : Colors.grey[600],
+              color: const Color(0xFF7D7D7D),
             ),
           ),
         ],
